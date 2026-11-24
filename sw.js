@@ -1,8 +1,9 @@
-const CACHE='ws-database-v2';
+const CACHE='ws-database-v3';
 const CORE=[
  './',
  './index.html',
  './manifest.webmanifest',
+ './app-icon.svg',
  './icon-180.png',
  './icon-192.png',
  './icon-512.png'
@@ -19,11 +20,24 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('fetch',event=>{
  if(event.request.method!=='GET')return;
- event.respondWith(fetch(event.request).then(response=>{
-  if(response.ok){
-   const copy=response.clone();
-   caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+ if(new URL(event.request.url).origin!==self.location.origin)return;
+ event.respondWith((async()=>{
+  try{
+   const response=await fetch(event.request);
+   if(response.ok){
+    const cache=await caches.open(CACHE);
+    await cache.put(event.request,response.clone());
+    if(new URL(event.request.url).pathname.includes('/sheets/')){
+     const sheets=(await cache.keys()).filter(request=>new URL(request.url).pathname.includes('/sheets/'));
+     await Promise.all(sheets.slice(0,Math.max(0,sheets.length-24)).map(request=>cache.delete(request)));
+    }
+   }
+   return response;
+  }catch{
+   const cached=await caches.match(event.request);
+   if(cached)return cached;
+   if(event.request.mode==='navigate')return caches.match('./index.html');
+   return Response.error();
   }
-  return response;
- }).catch(()=>caches.match(event.request).then(cached=>cached||caches.match('./index.html'))));
+ })());
 });
