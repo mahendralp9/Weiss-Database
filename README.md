@@ -25,4 +25,4 @@ Mobile-first Weiss Schwarz card database with a home dashboard for search, favor
 
 Titles removed on request: licensed Western IP (Marvel, Disney family, Pixar, Star Wars), EN-only IP (RWBY, Adventure Time, Avatar the Last Airbender) and WS Blau (discontinued).
 
-**Card scanning:** the camera button reads a card code with Tesseract.js and matches it against the catalog in a background worker, so matching does not block the page. An internet connection is needed to load the OCR library on first use.
+**Card scanning:** the camera button checks several lower-card code areas with Tesseract.js, then matches OCR text against the catalog in a background worker. An internet connection is needed to load the OCR library on first use.
