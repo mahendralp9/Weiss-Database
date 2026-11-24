@@ -187,7 +187,7 @@ combo('ser',()=>[...new Set(CARDS.map(c=>c.series))],()=>{$('set').value='';rend
 combo('set',()=>{const s=$('ser').value.trim().toLowerCase();return [...new Set(CARDS.filter(c=>!s||c.series.toLowerCase().includes(s)).map(c=>c.set))]},render);
 const meta=c=>c.type==='Climax'?'Climax'+(c.trig.length?' · '+c.trig.join(', '):''):'Lv '+c.lv+' · '+c.col+' · Cost '+c.cost+' · Power '+c.pw+(c.soul?' · Soul '+c.soul:'');
 function pic(c,big,remote=true){const al=esc(c.name);
- if(remote&&/^https:\/\/en\.ws-tcg\.com\//i.test(c.img||''))return '<img class="card-photo" src="'+attr(c.img)+'" alt="'+al+'" data-code="'+attr(c.code)+'" loading="lazy" decoding="async">';
+ if(remote&&/^https:\/\/en\.ws-tcg\.com\//i.test(c.img||''))return '<img class="card-photo" src="'+attr(c.img)+'" alt="'+attr(c.name)+'" data-code="'+attr(c.code)+'" loading="lazy" decoding="async">';
  if(c.hk!==undefined){const R=c.hs?1:13,x=(c.hk%16)/15*100,y=R>1?Math.floor(c.hk/16)/(R-1)*100:0;return '<div class="sp" role="img" aria-label="'+al+'" style="background-image:url(sheets/'+hid(c)+');background-size:1600% '+R*100+'%;background-position:'+x+'% '+y+'%"></div>'}
  if(c.has){const g=SHD[c.sh],x=(c.pos%g[2])/(g[2]-1)*100,y=Math.floor(c.pos/g[2])/(g[3]-1)*100;return '<div class="sp" role="img" aria-label="'+al+'" style="background-image:url(sheets/'+SHEETS[c.sh]+');background-size:'+g[2]*100+'% '+g[3]*100+'%;background-position:'+x+'% '+y+'%"></div>'}
  return view==='grid'||big?'<div class="ph"><span>'+al+'</span></div>':'<div class="ph"></div>'}
@@ -220,7 +220,7 @@ async function enhanceInto(c,el){
   cv.style.cssText='width:196px;height:274px;border-radius:8px;flex:none';cv.setAttribute('role','img');cv.setAttribute('aria-label',c.name);el.replaceWith(cv)}catch(e){}}
 function openLightbox(c,src){
  const lb=$('lightbox'),im=$('lightimg');
- im.alt=c.name;im.src=src||('https://en.ws-tcg.com/wordpress/wp-content/images/cardimages/'+encodeURIComponent(c.code)+'.png');
+ im.alt=c.name;im.src=src;
  im.onerror=()=>{
    if(c._fallbackLocal)return;
    c._fallbackLocal=true;
@@ -233,7 +233,7 @@ function openLightbox(c,src){
 }
 const closeLightbox=()=>{$('lightbox').hidden=true;$('lightimg').removeAttribute('src');document.body.style.overflow=''};
 async function openFullCard(c,allowRemote=true){
- if(allowRemote&&c.img){openLightbox(c,c.img);return}
+ if(allowRemote&&/^https:\/\/en\.ws-tcg\.com\//i.test(c.img||'')){openLightbox(c,c.img);return}
  let u,sx,sy,sw,sh;
  if(c.hk!==undefined){u='sheets/'+hid(c);sw=190;sh=266;sx=(c.hk%16)*190;sy=Math.floor(c.hk/16)*266}
  else if(c.has){[sx,sy,sw,sh]=tl(c);u='sheets/'+SHEETS[c.sh]}else{return}
