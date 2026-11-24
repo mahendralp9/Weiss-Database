@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Trading card emblem</title>
+  <rect width="512" height="512" fill="#211d25"/>
+  <g transform="rotate(-12 205 256)">
+    <rect x="91" y="78" width="228" height="356" rx="30" fill="#f8f4eb" stroke="#d6336c" stroke-width="12"/>
+    <path d="M111 104h188" stroke="#d9d1be" stroke-width="8" stroke-linecap="round"/>
+    <path d="M111 406h188" stroke="#d9d1be" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <g transform="rotate(12 307 256)">
+    <rect x="193" y="78" width="228" height="356" rx="30" fill="#d6336c" stroke="#f8f4eb" stroke-width="12"/>
+    <path d="M213 104h188" stroke="#f5a4bd" stroke-width="8" stroke-linecap="round"/>
+    <path d="M213 406h188" stroke="#f5a4bd" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <path d="m256 126 36 83 92 47-92 47-36 83-36-83-92-47 92-47z" fill="#211d25" stroke="#f8f4eb" stroke-width="12" stroke-linejoin="round"/>
+  <path d="m256 145 27 68-27 36-73-37z" fill="#d6336c"/>
+  <path d="m256 145-73 67 73 37z" fill="#f8f4eb"/>
+  <path d="m183 212 73 37v100z" fill="#d6336c"/>
+  <path d="m329 212-73 37v100z" fill="#f8f4eb"/>
+  <circle cx="256" cy="249" r="13" fill="#211d25" stroke="#f8f4eb" stroke-width="7"/>
+</svg>
