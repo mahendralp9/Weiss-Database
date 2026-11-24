@@ -73,7 +73,7 @@ body.hasbar main{padding-bottom:90px}textarea.sb{font-size:14px}
 <meta name="theme-color" content="#EFE9DC">
 </head><body>
 <header><div class="hrow"><h1>Weiss Schwarz <span>Database</span></h1><div class="seg" id="tabs"><button id="tc" aria-pressed="true">Cards</button><button id="td" aria-pressed="false">Decks</button></div></div>
-<div class="bar cv"><input class="sb" id="q" type="search" placeholder="Search code, name, trait or effect…" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button class="scan" id="scan" aria-label="Scan a card with the camera" hidden>&#128247;</button><input type="file" id="cam" accept="image/*" capture="environment" hidden></div>
+<div class="bar cv"><input class="sb" id="q" type="search" placeholder="Search code, name, trait or effect…" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button class="scan" id="scan" aria-label="Scan a card with the camera">&#128247;</button><input type="file" id="cam" accept="image/*" capture="environment" hidden></div>
 <div class="two cv"><div class="cw"><input class="sb combo" id="ser" placeholder="Series: all (type or pick)" autocomplete="off" autocapitalize="off"></div><div class="cw"><input class="sb combo" id="set" placeholder="Set: all in series" autocomplete="off" autocapitalize="off"></div></div>
 <div class="chips cv" id="chips"></div></header>
 <div class="topline cv"><div class="count" id="cnt"></div><div class="seg"><button id="vg">Grid</button><button id="vt">Tiles</button></div></div><div id="banner" class="banner cv" hidden></div><main id="list"><div class="empty">Loading database…</div></main><div id="sent" style="height:1px"></div><div id="deckview" hidden></div><div id="dbar" hidden></div>
@@ -153,17 +153,17 @@ function openLightbox(c,src){
  const lb=$('lightbox'),im=$('lightimg');
  im.alt=c.name;im.src=src||('https://en.ws-tcg.com/wordpress/wp-content/images/cardimages/'+encodeURIComponent(c.code)+'.png');
  lb.hidden=false;
+ document.body.style.overflow='hidden';
  lb.querySelector('.x').onclick=closeLightbox;
  lb.onclick=e=>{if(e.target===lb)closeLightbox()};
 }
-const closeLightbox=()=>{$('lightbox').hidden=true;$('lightimg').removeAttribute('src')};
+const closeLightbox=()=>{$('lightbox').hidden=true;$('lightimg').removeAttribute('src');document.body.style.overflow=''};
 async function openFullCard(c){
- if(c.img){openLightbox(c,c.img);return}
  let u,sx,sy,sw,sh;
  if(c.hk!==undefined){u='sheets/'+hid(c);sw=190;sh=266;sx=(c.hk%16)*190;sy=Math.floor(c.hk/16)*266}
  else if(c.has){[sx,sy,sw,sh]=tl(c);u='sheets/'+SHEETS[c.sh]}else{return}
  const im=await loadImg(u);if(!im)return;
- const cv=document.createElement('canvas');cv.width=190*4;cv.height=266*4;
+ const cv=document.createElement('canvas');cv.width=(c.hk!==undefined?190:sw)*4;cv.height=(c.hk!==undefined?266:sh)*4;
  cv.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,cv.width,cv.height);
  openLightbox(c,cv.toDataURL('image/jpeg',0.96));
 }
@@ -173,8 +173,14 @@ function open_(c){
  const upd=()=>{ov[c.code]=own(c)?0:1;save();fav.textContent=own(c)?'★':'☆';fav.setAttribute('aria-pressed',own(c)?'true':'false');render()};
  fav.setAttribute('aria-pressed',own(c)?'true':'false');fav.onclick=upd;$('panel').querySelector('.x').onclick=close_;
  const sp0=$('panel').querySelector('.top .sp');if(sp0)enhanceInto(c,sp0);
- const preview=$('panel').querySelector('.top img, .top canvas, .top .sp, .top .ph');
- if(preview){preview.onclick=e=>{e.stopPropagation();openFullCard(c)};preview.setAttribute('role','button');preview.setAttribute('aria-label','Open full-size card image')}
+ const previewTop=$('panel').querySelector('.top');
+ if(previewTop){
+  previewTop.onclick=e=>{
+   if(e.target.closest('button')||e.target.closest('.meta')||e.target.closest('.tags'))return;
+   e.stopPropagation();openFullCard(c);
+  };
+  previewTop.style.cursor='zoom-in';
+ }
  const dkp=document.createElement('div');dkp.className='step';const dd0=curDeck();
  dkp.innerHTML='Deck'+(dd0?' ('+esc(dd0.name)+')':'')+': <button aria-label="Remove from deck">−</button><span>'+inDeck(c)+'</span><button aria-label="Add to deck">+</button>';
  $('panel').appendChild(dkp);
@@ -185,24 +191,33 @@ function open_(c){
  db[0].onclick=()=>dupd(inDeck(c)-1);db[1].onclick=()=>dupd(inDeck(c)+1);
  $('sheet').hidden=false}
 const close_=()=>{$('sheet').hidden=true};
-$('sheet').onclick=e=>{if(e.target.id==='sheet')close_()};document.addEventListener('keydown',e=>{if(e.key==='Escape')close_()});
+$('sheet').onclick=e=>{if(e.target.id==='sheet')close_()};document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('lightbox').hidden)closeLightbox();else close_()}});
 $('vg').onclick=()=>{view='grid';try{localStorage.setItem('ggo_view',view)}catch(e){}render()};$('vt').onclick=()=>{view='tiles';try{localStorage.setItem('ggo_view',view)}catch(e){}render()};
 $('q').addEventListener('input',render);$('ser').addEventListener('input',()=>{$('set').value='';updSets();render()});$('set').addEventListener('input',render);
 // camera scan
 const bn=$('banner');
 function banner(msg,clear){bn.hidden=!msg;bn.innerHTML=msg?'<span>'+esc(msg)+'</span>'+(clear?'<button id="bc">Clear</button>':''):'';if(clear)$('bc').onclick=()=>{scanSet=null;banner('');render()}}
-(async()=>{try{const s=await claude.use('sample');if(!s)return;const lim=await s.limits().catch(()=>null);if(!lim||!lim.images)return;$('scan').hidden=false;
- $('scan').onclick=()=>$('cam').click();
- $('cam').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;banner('Reading card…',false);
-  try{const r=await s.json('This photo shows one Weiss Schwarz trading card. Read the card code printed small near the bottom-right of the card (for example GGO/S59-E070 or AB/W31-E001) and the card name. Reply with JSON only: {"code":"","name":""} and use empty strings for anything unreadable.',{images:f,modelTier:'default'});
-   const key=x=>norm(x||'').replace(/e(?=\d+$)/,''),kc=key(r&&r.code),nm=norm(r&&r.name);
-   let m=kc?CARDS.filter(c=>key(c.code)===kc):[];
-   if(!m.length&&nm.length>2)m=CARDS.filter(c=>norm(c.name)===nm);
-   if(!m.length&&nm.length>3)m=CARDS.filter(c=>norm(c.name).includes(nm));
-   m=m.slice(0,8).map(c=>c.code);
-   if(!m.length){banner('No match found. Try again with the whole card in frame and good light.',false);return}
-   scanSet=new Set(m);$('q').value='';banner('Scan result: '+m.length+' possible match'+(m.length>1?'es':''),true);render();
-  }catch(err){banner(err&&err.code==='not_granted'?'Scan was declined.':err&&err.code==='rate_limited'?'Too many scans. Wait a moment and try again.':'Scan failed. Please try again.',false)}}}catch(e){}})();
+function loadScript(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}
+$('scan').onclick=()=>$('cam').click();
+$('cam').onchange=async e=>{
+ const f=e.target.files[0];e.target.value='';if(!f)return;banner('Reading card code…',false);
+ try{
+  if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+  const worker=await window.Tesseract.createWorker('eng');
+  const {data}=await worker.recognize(f);
+  await worker.terminate();
+  const text=String(data&&data.text||'').toUpperCase();
+  const codes=[...text.matchAll(/[A-Z]{2,12}\/[A-Z0-9]+(?:-[A-Z]?[0-9]+)?/g)].map(m=>m[0].replace(/\s/g,''));
+  const result=new Set();
+  codes.forEach(code=>{CARDS.forEach(c=>{if(norm(c.code).includes(norm(code))||norm(code).includes(norm(c.code)))result.add(c.code)} )});
+  if(!result.size){
+   const words=text.match(/[A-Z][A-Z0-Z]{3,}/g)||[];
+   for(const word of words){CARDS.forEach(c=>{if(norm(c.name).includes(norm(word))||norm(word).includes(norm(c.name)))result.add(c.code)})}
+  }
+  if(!result.size){banner('No match found. Fill the frame with the card code and try good lighting.',false);return}
+  scanSet=new Set([...result].slice(0,12));$('q').value='';banner('Scan result: '+scanSet.size+' possible match'+(scanSet.size>1?'es':''),true);render();
+ }catch(err){banner('Card scan failed. Check your internet connection and try again.',false)}
+};
 
 // ---------- decks ----------
 let decks=[],act=null,mode='cards';
@@ -300,6 +315,9 @@ $('tc').onclick=()=>setMode('cards');$('td').onclick=()=>setMode('decks');
 updBar();
 chips();render();
 
+if('serviceWorker'in navigator){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
 
 })();
 </script></body></html>
