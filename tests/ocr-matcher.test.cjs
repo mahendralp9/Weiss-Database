@@ -18,10 +18,12 @@ function send(data){
  return messages.shift();
 }
 
-test('matches exact, OCR-confused, and near-match card codes',()=>{
+test('matches noisy OCR from the GGO/SE50-P04 photo without adjacent-card false positives',()=>{
  assert.equal(send({type:'init',codes:cards.map(card=>card.code)}).type,'ready');
  assert.deepEqual(Array.from(send({type:'match',id:1,text:'GGO/SE50-09'}).codes),['GGO/SE50-09']);
  assert.deepEqual(Array.from(send({type:'match',id:2,text:'GGO/SE5O-09'}).codes),['GGO/SE50-09']);
  assert.deepEqual(Array.from(send({type:'match',id:3,text:'GGO/SF50-09'}).codes),['GGO/SE50-09']);
- assert.deepEqual(Array.from(send({type:'match',id:4,text:'ZZZ/ZZZZ-9999'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:4,text:'GOrSESOP SSPR 0500 ine 46a'}).codes),['GGO/SE50-P04']);
+ assert.deepEqual(Array.from(send({type:'match',id:5,text:'SOrSESO SPR 0500 4ia'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:6,text:'ZZZ/ZZZZ-9999'}).codes),[]);
 });
