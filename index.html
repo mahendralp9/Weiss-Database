@@ -213,6 +213,37 @@ function loadScript(src){
   document.head.appendChild(s);
  })
 }
+function scanCodeKey(code){
+ return norm(code).replace(/[oi]/g,m=>m==='o'?'0':'1');
+}
+function editDistance(a,b){
+ if(!a.length)return b.length;if(!b.length)return a.length;
+ const p=new Array(b.length+1);for(let i=0;i<=b.length;i++)p[i]=i;
+ for(let i=1;i<=a.length;i++){let old=p[0];p[0]=i;for(let j=1;j<=b.length;j++){const cur=p[j];p[j]=Math.min(p[j]+1,p[j-1]+1,old+(a[i-1]===b[j-1]?0:1));old=cur}}
+ return p[b.length];
+}
+let SCAN_CODES=null;
+function validScanCodes(){
+ if(SCAN_CODES)return SCAN_CODES;
+ SCAN_CODES=new Map();
+ CARDS.forEach(c=>{
+  const key=scanCodeKey(c.code);
+  if(!SCAN_CODES.has(key))SCAN_CODES.set(key,c.code);
+ });
+ return SCAN_CODES;
+}
+function matchScannedCode(text){
+ const compact=text.toUpperCase().replace(/[^A-Z0-9\/\-]/g,'');
+ const found=[...compact.matchAll(/[A-Z]{2,12}[\/][A-Z0-9]+(?:-?[A-Z]?[0-9]{1,4})?/g)].map(m=>m[0]);
+ const candidates=new Map();
+ validScanCodes().forEach((cardCode,key)=>{
+  found.forEach(foundCode=>{
+   const f=scanCodeKey(foundCode),d=editDistance(f,key);
+   if(d<=2)candidates.set(cardCode,(candidates.get(cardCode)||0)+1+(2-d)/3);
+  });
+ });
+ return [...candidates].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]);
+}
 $('scan').onclick=()=>$('cam').click();
 $('cam').onchange=async e=>{
  const f=e.target.files[0];e.target.value='';if(!f)return;banner('Reading card code…',false);
@@ -220,26 +251,29 @@ $('cam').onchange=async e=>{
   if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
   const bitmap=await createImageBitmap(f);
   const maxW=1600,scale=Math.min(1,maxW/bitmap.width);
-  const cv=document.createElement('canvas');cv.width=Math.round(bitmap.width*scale);cv.height=Math.round(bitmap.height*scale);
-  const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.filter='contrast(1.35) grayscale(1)';ctx.drawImage(bitmap,0,0,cv.width,cv.height);
+   const w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
   const worker=await window.Tesseract.createWorker('eng');
-  await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-',preserve_interword_spaces:'1'});
-  const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',0.92));
-  const recognition=worker.recognize(blob||cv);
-  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('OCR timeout')),30000));
-  const {data}=await Promise.race([recognition,timeout]);
+  await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-',preserve_interword_spaces:'1',tessedit_pageseg_mode:'11'});
+   const crops=[
+    [0,0,w,h],
+    [Math.floor(w*.05),Math.floor(h*.68),Math.floor(w*.90),Math.floor(h*.29)],
+    [Math.floor(w*.50),Math.floor(h*.72),Math.floor(w*.48),Math.floor(h*.25)]
+   ];
+   let combined='';
+   for(const [x,y,cw,ch] of crops){
+    const cv=document.createElement('canvas');cv.width=Math.max(800,cw*2);cv.height=Math.max(220,ch*2);
+    const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.filter='contrast(1.8) grayscale(1)';ctx.drawImage(bitmap,x,y,cw,ch,0,0,cv.width,cv.height);
+    const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',0.94));
+    const recognition=worker.recognize(blob||cv);
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('OCR timeout')),20000));
+    const result=await Promise.race([recognition,timeout]);
+    combined+=' '+String(result.data&&result.data.text||'');
+   }
   await worker.terminate();
-  const text=String(data&&data.text||'').toUpperCase();
-  const compact=text.replace(/\s+/g,'');
-  const codes=[...compact.matchAll(/[A-Z]{2,12}\/[A-Z0-9]+(?:-?[A-Z]?[0-9]{1,4})?/g)].map(m=>m[0]);
-  const result=new Set();
-  codes.forEach(code=>{CARDS.forEach(c=>{if(norm(c.code).includes(norm(code))||norm(code).includes(norm(c.code)))result.add(c.code)} )});
-  if(!result.size){
-   const words=text.match(/[A-Z][A-Z0-9]{3,}/g)||[];
-   for(const word of words){CARDS.forEach(c=>{if(norm(c.name).includes(norm(word))||norm(word).includes(norm(c.name)))result.add(c.code)})}
-  }
-  if(!result.size){banner('No match found. Fill the frame with the card code and try good lighting.',false);return}
-  scanSet=new Set([...result].slice(0,12));$('q').value='';banner('Scan result: '+scanSet.size+' possible match'+(scanSet.size>1?'es':''),true);render();
+   const text=combined.toUpperCase();
+  const result=matchScannedCode(text);
+  if(!result.length){banner('No match found. Fill the frame with the small card code and try good lighting.',true);return}
+  scanSet=new Set(result);$('q').value='';banner('Scan result: '+result.length+' likely match'+(result.length>1?'es':''),true);render();
  }catch(err){banner('Card scan failed. Check your internet connection and try again.',false)}
 };
 
