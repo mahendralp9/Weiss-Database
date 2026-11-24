@@ -62,6 +62,9 @@ body.hasbar main{padding-bottom:90px}textarea.sb{font-size:14px}
 .panel .det.eff{font-size:14.5px;line-height:1.55}
 .panel .favstar{width:42px;height:34px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:#B58A00;font-size:22px}
 .panel .top [role="img"],.panel .top img,.panel .top canvas{cursor:zoom-in}
+.control-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.control-grid .step{margin:0;justify-content:space-between;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg)}
+.tile .stock-badge{position:absolute;left:3px;top:3px;background:var(--ink);color:var(--bg);font-size:10px;font-weight:800;border-radius:5px;padding:2px 5px}
 .lightbox{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px}
 .lightbox[hidden]{display:none}
 .lightbox img,.lightbox canvas{width:auto;height:auto;max-width:94vw;max-height:94vh;object-fit:contain;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
@@ -88,9 +91,19 @@ let CARDS;try{CARDS=JSON.parse(await inflate(document.getElementById('data').tex
 const CC={Blue:'var(--blue)',Green:'var(--green)',Red:'var(--red)',Yellow:'var(--yellow)'};
 const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,'');
 const $=id=>document.getElementById(id);
-let ov={},view='grid';try{ov=JSON.parse(localStorage.getItem('ggo_own')||'{}');view=localStorage.getItem('ggo_view')||'grid';Object.keys(ov).forEach(k=>{ov[k]=ov[k]>0?1:0})}catch(e){}
-const own=c=>ov[c.code]>0?1:0;
-const save=()=>{try{localStorage.setItem('ggo_own',JSON.stringify(ov))}catch(e){}};
+let fav={},stock={},view='grid';
+try{
+ fav=JSON.parse(localStorage.getItem('ws_favorites')||'{}');
+ if(!Object.keys(fav).length){
+  const old=JSON.parse(localStorage.getItem('ggo_own')||'{}');
+  Object.keys(old).forEach(k=>{if(old[k]>0)fav[k]=true});
+ }
+ stock=JSON.parse(localStorage.getItem('ws_stock')||'{}');
+ view=localStorage.getItem('ggo_view')||'grid';
+}catch(e){}
+const own=c=>fav[c.code]?1:0;
+const stockOf=c=>Math.max(0,+stock[c.code]||0);
+const save=()=>{try{localStorage.setItem('ws_favorites',JSON.stringify(fav));localStorage.setItem('ws_stock',JSON.stringify(stock));localStorage.setItem('ggo_own',JSON.stringify(fav))}catch(e){}};
 CARDS.forEach(c=>{c._k=norm(c.code)+' '+norm(c.name)+' '+norm(c.traits.join(' '))+' '+c.eff.toLowerCase()});
 const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
 const formatEff=s=>{
@@ -103,9 +116,9 @@ const formatEff=s=>{
  s=s.replace(/\n{3,}/g,'\n\n').trim();
  return s.replace(/^\n+/,'');
 };
-const F={fav:false,cols:new Set(),lvs:new Set(),cx:false};let scanSet=null;
+const F={fav:false,stock:false,cols:new Set(),lvs:new Set(),cx:false};let scanSet=null;
 const tog=(s,v)=>s.has(v)?s.delete(v):s.add(v);
-const defs=[['Favorite',()=>F.fav=!F.fav,()=>F.fav],...['Blue','Green','Red'].map(x=>[x,()=>tog(F.cols,x),()=>F.cols.has(x)]),...[0,1,2,3].map(x=>['Lv '+x,()=>tog(F.lvs,x),()=>F.lvs.has(x)]),['Climax',()=>F.cx=!F.cx,()=>F.cx],['Reset',()=>{F.fav=F.cx=false;F.cols.clear();F.lvs.clear();$('ser').value='';$('set').value='';updSets();$('q').value='';scanSet=null},()=>false]];
+const defs=[['Favorite',()=>F.fav=!F.fav,()=>F.fav],['Stock',()=>F.stock=!F.stock,()=>F.stock],...['Blue','Green','Red'].map(x=>[x,()=>tog(F.cols,x),()=>F.cols.has(x)]),...[0,1,2,3].map(x=>['Lv '+x,()=>tog(F.lvs,x),()=>F.lvs.has(x)]),['Climax',()=>F.cx=!F.cx,()=>F.cx],['Reset',()=>{F.fav=F.stock=F.cx=false;F.cols.clear();F.lvs.clear();$('ser').value='';$('set').value='';updSets();$('q').value='';scanSet=null},()=>false]];
 function chips(){const cb=$('chips');cb.innerHTML='';defs.forEach(([t,f,on])=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.setAttribute('aria-pressed',on());b.onclick=()=>{f();chips();render()};cb.appendChild(b)})}
 function updSets(){}
 function combo(id,opts,after){const inp=$(id),dd=document.createElement('div');dd.className='dd';dd.hidden=true;inp.parentNode.appendChild(dd);
@@ -127,12 +140,12 @@ function more(){if(!make)return;rows.slice(shown,shown+PAGE).forEach(make);shown
 function count(){$('cnt').textContent=rows.length+' cards · '+rows.reduce((a,c)=>a+(own(c)?1:0),0)+' favorites'}
 function render(){
  const terms=$('q').value.toLowerCase().split(/\s+/).map(norm).filter(Boolean),ser=$('ser').value.trim().toLowerCase(),sset=$('set').value.trim().toLowerCase();
- rows=CARDS.filter(c=>(!scanSet||scanSet.has(c.code))&&(!F.fav||own(c)>0)&&(!F.cols.size||F.cols.has(c.col))&&((!F.lvs.size&&!F.cx)||(c.type!=='Climax'&&F.lvs.has(c.lv))||(F.cx&&c.type==='Climax'))&&(!ser||c.series.toLowerCase().includes(ser))&&(!sset||c.set.toLowerCase().includes(sset))&&terms.every(t=>c._k.includes(t)));
+ rows=CARDS.filter(c=>(!scanSet||scanSet.has(c.code))&&(!F.fav||own(c)>0)&&(!F.stock||stockOf(c)>0)&&(!F.cols.size||F.cols.has(c.col))&&((!F.lvs.size&&!F.cx)||(c.type!=='Climax'&&F.lvs.has(c.lv))||(F.cx&&c.type==='Climax'))&&(!ser||c.series.toLowerCase().includes(ser))&&(!sset||c.set.toLowerCase().includes(sset))&&terms.every(t=>c._k.includes(t)));
  count();
  const m=$('list');m.className=view==='grid'?'grid':'';$('vg').setAttribute('aria-pressed',view==='grid');$('vt').setAttribute('aria-pressed',view!=='grid');
  m.innerHTML=rows.length?'':'<div class="empty">No cards match. Try another keyword or press Reset.</div>';
  shown=0; make=c=>{const b=document.createElement('button');const im=pic(c);const q=own(c)?'<div class="qty fav" aria-label="Favorite">★</div>':'';
-  if(view==='grid'){b.className='tile';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.innerHTML=im+q+'<div class="cap">'+esc(c.code)+'</div>'}
+  if(view==='grid'){const sb=stockOf(c)?'<div class="stock-badge" aria-label="Stock">×'+stockOf(c)+'</div>':'';b.className='tile';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.innerHTML=im+q+sb+'<div class="cap">'+esc(c.code)+'</div>'}
   else{b.className='card row';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.style.borderLeft='7px solid var(--c)';b.innerHTML=im+'<div class="info"><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div>'+(c.eff?'<div class="teff">'+esc(formatEff(c.eff))+'</div>':'')+'</div>'+q}
   b._c=c;b.onclick=()=>open_(c);m.appendChild(b);dkb(b,c)};more()}
 
@@ -174,10 +187,13 @@ async function openFullCard(c,allowRemote=true){
  openLightbox(c,cv.toDataURL('image/jpeg',0.96));
 }
 function open_(c){
- $('panel').innerHTML='<button class="x" aria-label="Close">×</button><div class="top">'+pic(c,true)+'<div><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div><div class="tags" style="margin-top:6px">'+esc(c.series+' · '+c.set+(c.traits.length?' · '+c.traits.join(' / '):'')+(c.trig.length?' · Trigger: '+c.trig.join(', '):''))+'</div></div></div><div class="det eff" style="border:0;padding:12px 0 0">'+esc(formatEff(c.eff)||'(No English effect text available)')+'</div><div class="step">Favorite: <button class="favstar" aria-label="Toggle favorite">'+(own(c)?'★':'☆')+'</button></div>';
+ $('panel').innerHTML='<button class="x" aria-label="Close">×</button><div class="top">'+pic(c,true)+'<div><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div><div class="tags" style="margin-top:6px">'+esc(c.series+' · '+c.set+(c.traits.length?' · '+c.traits.join(' / '):'')+(c.trig.length?' · Trigger: '+c.trig.join(', '):''))+'</div></div></div><div class="det eff" style="border:0;padding:12px 0 0">'+esc(formatEff(c.eff)||'(No English effect text available)')+'</div><div class="control-grid"><div class="step">Favorite: <button class="favstar" aria-label="Toggle favorite">'+(own(c)?'★':'☆')+'</button></div><div class="step" id="stock-control">Stock: <button aria-label="Decrease stock">−</button><span>'+stockOf(c)+'</span><button aria-label="Increase stock">+</button></div></div>';
  const fav=$('panel').querySelector('.favstar');
- const upd=()=>{ov[c.code]=own(c)?0:1;save();fav.textContent=own(c)?'★':'☆';fav.setAttribute('aria-pressed',own(c)?'true':'false');render()};
+ const upd=()=>{fav[c.code]=own(c)?undefined:true;if(!fav[c.code])delete fav[c.code];save();fav.textContent=own(c)?'★':'☆';fav.setAttribute('aria-pressed',own(c)?'true':'false');render()};
  fav.setAttribute('aria-pressed',own(c)?'true':'false');fav.onclick=upd;$('panel').querySelector('.x').onclick=close_;
+ const sc=$('stock-control'),sb=sc.querySelectorAll('button'),ss=sc.querySelector('span');
+ const setStock=n=>{n=Math.max(0,Math.min(999,n));if(n)stock[c.code]=n;else delete stock[c.code];save();ss.textContent=n;render();refreshBadges()};
+ sb[0].onclick=()=>setStock(stockOf(c)-1);sb[1].onclick=()=>setStock(stockOf(c)+1);
  const sp0=$('panel').querySelector('.top .sp');if(sp0)enhanceInto(c,sp0);
  const previewTop=$('panel').querySelector('.top');
  if(previewTop){
@@ -299,7 +315,7 @@ const GORD=['Level 3','Level 2','Level 1','Level 0','Events','Climax'];
 function groups(d){const g={};Object.entries(d.cards).forEach(([code,k])=>{const c=byCode.get(code);if(c)(g[grp(c)]=g[grp(c)]||[]).push([c,k])});GORD.forEach(x=>g[x]&&g[x].sort((a,b)=>a[0].name.localeCompare(b[0].name)));return GORD.filter(x=>g[x]).map(x=>[x,g[x]])}
 function deckText(d){const L=[d.name+' ('+dsum(d)+' cards)'];groups(d).forEach(([l,it])=>{L.push('','// '+l+' ('+it.reduce((a,x)=>a+x[1],0)+')');it.forEach(([c,k])=>L.push(k+' '+c.code+' '+c.name))});return L.join('\n')}
 async function copyText(t,btn){let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy')}catch(e2){}ta.remove()}const o=btn.textContent;btn.textContent=ok?'Copied!':'Copy failed';setTimeout(()=>btn.textContent=o,1500)}
-function updBar(){const d=curDeck(),bar=$('dbar'),show=mode==='cards'&&!!d;bar.hidden=!show;document.body.classList.toggle('hasbar',show);if(show){bar.innerHTML='<span>Deck: '+esc(d.name)+' · '+dsum(d)+'/50</span><button>Open</button>';bar.querySelector('button').onclick=()=>setMode('deck')}}
+function updBar(){const d=curDeck(),bar=$('dbar'),show=mode==='cards'&&!!d;bar.hidden=!show;document.body.classList.toggle('hasbar',show);if(show){const stockTotal=Object.values(stock).reduce((a,b)=>a+(+b||0),0);bar.innerHTML='<span>Stock: '+stockTotal+' · Deck: '+esc(d.name)+' · '+dsum(d)+'/50</span><button>Open</button>';bar.querySelector('button').onclick=()=>setMode('deck')}}
 function setMode(m){mode=m;document.body.classList.toggle('dv',m!=='cards');$('tc').setAttribute('aria-pressed',m==='cards');$('td').setAttribute('aria-pressed',m!=='cards');$('deckview').hidden=m==='cards';if(m==='decks')renderDecks();if(m==='deck')renderDeck();updBar();scrollTo(0,0);if(m==='cards')refreshBadges()}
 function renderDecks(){const v=$('deckview');v.innerHTML='<div class="dacts"><button class="chip" id="nd">New deck</button><button class="chip" id="imp">Import list</button></div>'+(decks.length?'':'<div class="empty">No decks yet. Tap New deck, then add cards from the Cards tab.</div>');
  decks.forEach(d=>{const s=stats(d),ok=valid(s),el=document.createElement('button');el.className='dk-item';const cv0=coverCard(d);el.innerHTML='<div class="dkc">'+(cv0?pic(cv0):'<div class="ph"></div>')+'</div><div class="dkt"><b>'+esc(d.name)+'</b><span>'+s.n+'/50 cards · '+s.cx+' climax</span><em class="'+(ok?'okc':'badc')+'">'+(ok?'Valid':'Incomplete')+'</em>'+(d.id===act?'<i>Active</i>':'')+'</div>';el.onclick=()=>{act=d.id;saveD();setMode('deck')};v.appendChild(el)});
