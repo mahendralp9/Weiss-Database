@@ -1,8 +1,10 @@
 const MAX_DISTANCE=2;
+const MAX_SERIES_OCR_DISTANCE=1.1;
+const MAX_CODE_OCR_DISTANCE=2.2;
 const MAX_PREFIX_OCR_DISTANCE=2.2;
 const MAX_SUFFIX_OCR_DISTANCE=1.5;
 const MAX_OCR_DISTANCE=3.5;
-let codeBuckets=new Map(),codeByKey=new Map(),codePrefixBuckets=new Map();
+let codeBuckets=new Map(),codeByKey=new Map(),codePrefixBuckets=new Map(),codeSlashBuckets=new Map();
 
 function normalizeCode(value){
  return String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/O/g,'0').replace(/I/g,'1');
@@ -75,6 +77,62 @@ function extractCodes(text){
  return [...found];
 }
 
+function substringDistance(text,target,limit){
+ let best=Infinity;
+ for(let length=Math.max(1,target.length-MAX_DISTANCE);length<=Math.min(text.length,target.length+MAX_DISTANCE);length++){
+  for(let start=0;start+length<=text.length;start++){
+   const distance=fuzzyDistanceAtMost(text.slice(start,start+length),target,limit);
+   if(distance<best)best=distance;
+  }
+ }
+ return best;
+}
+
+function slashCodeMatches(text){
+ const source=String(text||''),matches=new Map(),pattern=/([A-Z0-9]{2,10})\s*[\/\\|]\s*/gi;
+ let best=Infinity;
+ for(const match of source.matchAll(pattern)){
+  const left=match[1].toUpperCase(),right=source.slice(match.index+match[0].length,match.index+match[0].length+48);
+  const tokens=[...right.matchAll(/[A-Z0-9]+/gi)].slice(0,6),groups=new Set();
+  for(let start=0;start<Math.min(tokens.length,3);start++){
+   let group='';
+   for(let end=start;end<Math.min(tokens.length,start+3);end++){
+    if(end>start&&tokens[end].index-tokens[end-1].index-tokens[end-1][0].length>5)break;
+    group+=tokens[end][0];
+    if(group.length>=4&&group.length<=18)groups.add(normalizeCode(group));
+   }
+  }
+  for(const [series,candidates] of codeSlashBuckets){
+   let seriesDistance=Infinity;
+   for(let length=Math.max(2,series.length-1);length<=Math.min(left.length,series.length+1);length++){
+    seriesDistance=Math.min(seriesDistance,fuzzyDistanceAtMost(normalizeCode(left.slice(-length)),series,MAX_SERIES_OCR_DISTANCE));
+   }
+   if(seriesDistance>MAX_SERIES_OCR_DISTANCE)continue;
+   for(const candidate of candidates){
+    let codeDistance=Infinity;
+    let numberDistance=Infinity;
+    const numberKey=candidate.suffixKey.replace(/\D/g,'');
+    for(const group of groups){
+     codeDistance=Math.min(codeDistance,substringDistance(group,candidate.remainderKey,MAX_CODE_OCR_DISTANCE));
+     const setOffset=group.indexOf(candidate.setKey);
+     if(setOffset<0||!numberKey)continue;
+     const afterSet=group.slice(setOffset+candidate.setKey.length);
+     for(const digits of afterSet.matchAll(/[0-9]{1,5}/g)){
+      numberDistance=Math.min(numberDistance,distanceAtMost(digits[0],numberKey,MAX_DISTANCE));
+     }
+    }
+    const score=seriesDistance+codeDistance+(Number.isFinite(numberDistance)?numberDistance*.75:0);
+    if(score<best-.15){best=score;matches.clear()}
+    if(score<=MAX_SERIES_OCR_DISTANCE+MAX_CODE_OCR_DISTANCE){
+     matches.set(candidate.code,Math.min(matches.get(candidate.code)??Infinity,score));
+    }
+   }
+  }
+ }
+ if(best>MAX_SERIES_OCR_DISTANCE+MAX_CODE_OCR_DISTANCE)return [];
+ return [...matches].filter(([,score])=>score<=best+.2).slice(0,3).map(([code])=>code);
+}
+
 function fuzzyMatchCodes(text){
  const tokens=[...String(text||'').toUpperCase().matchAll(/[A-Z0-9]+/g)];
  const groups=new Set();
@@ -116,11 +174,17 @@ function fuzzyMatchCodes(text){
 }
 
 function matchCodes(text){
- const tokens=extractCodes(text),matches=new Map();let best=MAX_DISTANCE+1;
+ const tokens=extractCodes(text);
+ for(const token of tokens){
+  const known=codeByKey.get(normalizeCode(token));
+  if(known)return [known];
+ }
+ const slashMatches=slashCodeMatches(text);
+ if(slashMatches.length)return slashMatches;
+ if(/[\/\\|]/.test(String(text||'')))return [];
+ const matches=new Map();let best=MAX_DISTANCE+1;
  for(const token of tokens){
   const key=normalizeCode(token);
-  const known=codeByKey.get(key);
-  if(known)return [known];
   for(let length=Math.max(7,key.length-MAX_DISTANCE);length<=Math.min(14,key.length+MAX_DISTANCE);length++){
    for(const candidate of codeBuckets.get(length)||[]){
     const distance=distanceAtMost(key,candidate.key,MAX_DISTANCE);
@@ -137,15 +201,21 @@ self.onmessage=event=>{
  const data=event.data||{};
  try{
   if(data.type==='init'){
-   codeBuckets=new Map();codeByKey=new Map();codePrefixBuckets=new Map();
+   codeBuckets=new Map();codeByKey=new Map();codePrefixBuckets=new Map();codeSlashBuckets=new Map();
    for(const code of data.codes||[]){
     const key=normalizeCode(code);
     if(key.length<7||key.length>14||codeByKey.has(key))continue;
     const [prefix,suffix]=String(code).toUpperCase().split(/-(?=[^-]*$)/);
+    const slashIndex=prefix.indexOf('/');
+    const seriesKey=slashIndex<0?'':prefix.slice(0,slashIndex).replace(/[^A-Z0-9]/g,'');
+    const setKey=slashIndex<0?'':prefix.slice(slashIndex+1).replace(/[^A-Z0-9]/g,'');
+    const remainderKey=slashIndex<0?'':String(code).toUpperCase().slice(slashIndex+1).replace(/[^A-Z0-9]/g,'');
     const candidate={
      key,
      prefixKey:String(prefix||code).replace(/[^A-Z0-9]/g,''),
      suffixKey:String(suffix||'').replace(/[^A-Z0-9]/g,''),
+     setKey,
+     remainderKey,
      code
     };
     codeByKey.set(key,code);
@@ -154,6 +224,10 @@ self.onmessage=event=>{
      const prefixes=codePrefixBuckets.get(candidate.prefixKey.length);
      if(!prefixes.has(candidate.prefixKey))prefixes.set(candidate.prefixKey,[]);
      prefixes.get(candidate.prefixKey).push(candidate);
+    }
+    if(seriesKey&&remainderKey){
+     if(!codeSlashBuckets.has(seriesKey))codeSlashBuckets.set(seriesKey,[]);
+     codeSlashBuckets.get(seriesKey).push(candidate);
     }
     if(!codeBuckets.has(key.length))codeBuckets.set(key.length,[]);
     codeBuckets.get(key.length).push(candidate);
