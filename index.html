@@ -270,7 +270,9 @@ async function visualMatchPhoto(photoBitmap){
  const photoFp=imageFingerprint(sample);
  const ranked=[];
  const sheetCache=new Map();
+ let compared=0;
  for(const c of CARDS){
+  if(compared>=1200)break;
   if(!c.has||c.sh==null)continue;
   if(!sheetCache.has(c.sh)){
    const im=await loadImg('sheets/'+SHEETS[c.sh]);if(!im)continue;
@@ -282,6 +284,7 @@ async function visualMatchPhoto(photoBitmap){
   const fp=imageFingerprint(cv);
   const d=fingerprintDistance(photoFp,fp);
   ranked.push([c.code,d]);
+  compared++;
   if(ranked.length%800===0)await new Promise(r=>setTimeout(r,0));
  }
  ranked.sort((a,b)=>a[1]-b[1]);
@@ -337,10 +340,7 @@ $('cam').onchange=async e=>{
    const crops=[
      [0,0,w,h],
      [Math.floor(w*.05),Math.floor(h*.68),Math.floor(w*.90),Math.floor(h*.29)],
-     [Math.floor(w*.50),Math.floor(h*.72),Math.floor(w*.48),Math.floor(h*.25)],
-     [Math.floor(w*.02),Math.floor(h*.80),Math.floor(w*.96),Math.floor(h*.18)],
-     [Math.floor(w*.48),Math.floor(h*.86),Math.floor(w*.50),Math.floor(h*.12)],
-     [Math.floor(w*.62),Math.floor(h*.82),Math.floor(w*.36),Math.floor(h*.16)]
+     [Math.floor(w*.48),Math.floor(h*.86),Math.floor(w*.50),Math.floor(h*.12)]
    ];
    let combined='';
    for(let ci=0;ci<crops.length;ci++){
@@ -363,7 +363,10 @@ $('cam').onchange=async e=>{
     return;
    }
    banner('Reading card image…',false);
-   const visual=await visualMatchPhoto(bitmap);
+   const visual=await Promise.race([
+    visualMatchPhoto(bitmap),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('Visual timeout')),15000))
+   ]);
    if(!visual.length){const sample=text.replace(/\s+/g,' ').trim().slice(0,60);banner('No match found.'+(sample?' OCR read: '+esc(sample):''),true);return}
    scanSet=new Set(visual.slice(0,5));$('q').value='';banner('Visual match candidates: '+scanSet.size,true);render();
  }catch(err){banner('Card scan failed. Check your internet connection and try again.',false)}
