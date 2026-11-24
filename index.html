@@ -105,7 +105,7 @@ body.home-mode #app-header,body.home-mode #topline,body.home-mode #banner,body.h
 .home-rail{display:flex;gap:10px;overflow:auto;padding:2px 2px 8px;scrollbar-width:none}
 .home-rail::-webkit-scrollbar{display:none}
 .home-card{position:relative;flex:0 0 112px;border:0;border-radius:12px;overflow:hidden;background:#303137;color:#f5f4f8;padding:0;text-align:left;font:inherit}
-.home-card .sp,.home-card .ph{display:block;width:100%;aspect-ratio:5/7;height:auto}
+.home-card .sp,.home-card .ph,.home-card img{display:block;width:100%;aspect-ratio:5/7;height:auto;object-fit:cover}
 .home-card .home-card-code{display:block;padding:7px 7px 2px;font-size:10px;font-weight:800;overflow-wrap:anywhere}
 .home-card .home-card-name{display:-webkit-box;min-height:34px;padding:0 7px 8px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#d0ced8;font-size:10px}
 .home-empty{padding:18px;border:1px dashed #484750;border-radius:14px;color:#b9b8c2;font-size:13px}
@@ -186,7 +186,8 @@ function combo(id,opts,after){const inp=$(id),dd=document.createElement('div');d
 combo('ser',()=>[...new Set(CARDS.map(c=>c.series))],()=>{$('set').value='';render()});
 combo('set',()=>{const s=$('ser').value.trim().toLowerCase();return [...new Set(CARDS.filter(c=>!s||c.series.toLowerCase().includes(s)).map(c=>c.set))]},render);
 const meta=c=>c.type==='Climax'?'Climax'+(c.trig.length?' · '+c.trig.join(', '):''):'Lv '+c.lv+' · '+c.col+' · Cost '+c.cost+' · Power '+c.pw+(c.soul?' · Soul '+c.soul:'');
-function pic(c,big){const al=esc(c.name);
+function pic(c,big,remote=true){const al=esc(c.name);
+ if(remote&&/^https:\/\/en\.ws-tcg\.com\//i.test(c.img||''))return '<img class="card-photo" src="'+attr(c.img)+'" alt="'+al+'" data-code="'+attr(c.code)+'" loading="lazy" decoding="async">';
  if(c.hk!==undefined){const R=c.hs?1:13,x=(c.hk%16)/15*100,y=R>1?Math.floor(c.hk/16)/(R-1)*100:0;return '<div class="sp" role="img" aria-label="'+al+'" style="background-image:url(sheets/'+hid(c)+');background-size:1600% '+R*100+'%;background-position:'+x+'% '+y+'%"></div>'}
  if(c.has){const g=SHD[c.sh],x=(c.pos%g[2])/(g[2]-1)*100,y=Math.floor(c.pos/g[2])/(g[3]-1)*100;return '<div class="sp" role="img" aria-label="'+al+'" style="background-image:url(sheets/'+SHEETS[c.sh]+');background-size:'+g[2]*100+'% '+g[3]*100+'%;background-position:'+x+'% '+y+'%"></div>'}
  return view==='grid'||big?'<div class="ph"><span>'+al+'</span></div>':'<div class="ph"></div>'}
@@ -402,6 +403,17 @@ let decks=[],act=null,mode='cards';
 try{decks=JSON.parse(localStorage.getItem('ws_decks')||'[]');act=localStorage.getItem('ws_act')||null}catch(e){}
 const saveD=()=>{try{localStorage.setItem('ws_decks',JSON.stringify(decks));localStorage.setItem('ws_act',act||'')}catch(e){}};
 const byCode=new Map();CARDS.forEach(c=>{if(!byCode.has(c.code))byCode.set(c.code,c)});
+document.addEventListener('error',event=>{
+ const image=event.target;
+ if(!(image instanceof HTMLImageElement)||!image.classList.contains('card-photo')||image.dataset.fallback)return;
+ image.dataset.fallback='true';
+ const card=byCode.get(image.dataset.code);
+ if(!card)return;
+ const fallback=document.createElement('template');
+ fallback.innerHTML=pic(card,true,false);
+ const replacement=fallback.content.firstElementChild;
+ if(replacement)image.replaceWith(replacement);
+},true);
 const ckey=x=>norm(x||'').replace(/e(?=\d+$)/,'');let ckm=null;
 const curDeck=()=>decks.find(d=>d.id===act)||null;
 const dsum=d=>Object.values(d.cards).reduce((a,b)=>a+b,0);
