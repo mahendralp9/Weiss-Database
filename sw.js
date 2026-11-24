@@ -1,7 +1,8 @@
-const CACHE='ws-database-v3';
+const CACHE='ws-database-v4';
 const CORE=[
  './',
  './index.html',
+ './ocr-matcher.js',
  './manifest.webmanifest',
  './app-icon.svg',
  './icon-180.png',
