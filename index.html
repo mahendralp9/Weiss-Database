@@ -248,6 +248,18 @@ function validScanCodes(){
  });
  return SCAN_CODES;
 }
+function expandOcrCodeVariants(code){
+ const raw=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const variants=new Set([raw]);
+ for(const a of [raw,raw.replace(/0/g,'O').replace(/1/g,'I')])for(const b of [a,a.replace(/O/g,'0').replace(/I/g,'1')])variants.add(b);
+ const out=[];
+ variants.forEach(v=>{
+  out.push(v);
+  const m=v.match(/^([A-Z]{2,8})([A-Z]{1,6})-?([A-Z]?)([0-9]{1,4})$/);
+  if(m&&m[1]&&m[2])out.push(m[1]+'/'+m[2]+'-'+(m[3]||'')+m[4]);
+ });
+ return out;
+}
 function matchScannedCode(text){
  const compact=text.toUpperCase().replace(/[^A-Z0-9\/\-]/g,'');
  const found=[];
@@ -256,9 +268,11 @@ function matchScannedCode(text){
   /[A-Z]{2,12}\/[A-Z0-9]{1,12}-?[A-Z]?[0-9]{1,4}/g,
   /[A-Z]{2,12}[\/-][A-Z0-9]{2,12}/g
  ]) found.push(...[...compact.matchAll(pattern)].map(m=>m[0]));
+ const variants=[];
+ found.forEach(code=>variants.push(...expandOcrCodeVariants(code)));
  const candidates=new Map();
  validScanCodes().forEach((cardCode,key)=>{
-  found.forEach(foundCode=>{
+  (variants.length?variants:found).forEach(foundCode=>{
    const f=scanCodeKey(foundCode),d=editDistance(f,key);
    const maxLen=Math.max(f.length,key.length);
    const ratio=maxLen?d/maxLen:1;
@@ -284,12 +298,17 @@ $('cam').onchange=async e=>{
      [0,0,w,h],
      [Math.floor(w*.05),Math.floor(h*.68),Math.floor(w*.90),Math.floor(h*.29)],
      [Math.floor(w*.50),Math.floor(h*.72),Math.floor(w*.48),Math.floor(h*.25)],
-     [Math.floor(w*.02),Math.floor(h*.80),Math.floor(w*.96),Math.floor(h*.18)]
+     [Math.floor(w*.02),Math.floor(h*.80),Math.floor(w*.96),Math.floor(h*.18)],
+     [Math.floor(w*.48),Math.floor(h*.86),Math.floor(w*.50),Math.floor(h*.12)],
+     [Math.floor(w*.62),Math.floor(h*.82),Math.floor(w*.36),Math.floor(h*.16)]
    ];
    let combined='';
-   for(const [x,y,cw,ch] of crops){
+   for(let ci=0;ci<crops.length;ci++){
+    const [x,y,cw,ch]=crops[ci];
     const cv=document.createElement('canvas');cv.width=Math.max(800,cw*2);cv.height=Math.max(220,ch*2);
     const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.filter='contrast(1.8) grayscale(1)';ctx.drawImage(bitmap,x,y,cw,ch,0,0,cv.width,cv.height);
+    if(ci>=4)await worker.setParameters({tessedit_pageseg_mode:'7',preserve_interword_spaces:'1'});
+    else await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
     const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',0.94));
     const recognition=worker.recognize(blob||cv);
     const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('OCR timeout')),20000));
