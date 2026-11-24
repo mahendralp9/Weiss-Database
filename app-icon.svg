@@ -1,23 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>Weiss Schwarz TCG Database</title>
-  <defs>
-    <clipPath id="card">
-      <rect x="58" y="28" width="396" height="456" rx="38"/>
-    </clipPath>
-  </defs>
+  <title>Trading card emblem</title>
   <rect width="512" height="512" fill="#211d25"/>
-  <rect x="70" y="39" width="388" height="448" rx="36" fill="#111015" stroke="#d6336c" stroke-width="12"/>
-  <g clip-path="url(#card)">
-    <rect x="58" y="28" width="396" height="456" fill="#f8f4eb"/>
-    <path d="M58 28h396v116H58z" fill="#d6336c"/>
-    <path d="M58 144h396v340H58z" fill="#f8f4eb"/>
-    <path d="M58 370 454 190v294H58z" fill="#eee7da"/>
-    <path d="M78 165h356" stroke="#d9d1be" stroke-width="4"/>
-    <text x="256" y="108" fill="#fff" font-family="Arial,sans-serif" font-size="29" font-weight="800" letter-spacing="3" text-anchor="middle">WEISS SCHWARZ</text>
-    <text x="256" y="326" fill="#211d25" font-family="Arial,sans-serif" font-size="182" font-weight="900" letter-spacing="-13" text-anchor="middle">WS</text>
-    <path d="M206 350h100" stroke="#d6336c" stroke-width="9" stroke-linecap="round"/>
-    <text x="256" y="410" fill="#211d25" font-family="Arial,sans-serif" font-size="37" font-weight="900" letter-spacing="8" text-anchor="middle">TCG</text>
-    <text x="256" y="448" fill="#75705f" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="3" text-anchor="middle">CARD DATABASE</text>
+  <g transform="rotate(-12 205 256)">
+    <rect x="91" y="78" width="228" height="356" rx="30" fill="#f8f4eb" stroke="#d6336c" stroke-width="12"/>
+    <path d="M111 104h188" stroke="#d9d1be" stroke-width="8" stroke-linecap="round"/>
+    <path d="M111 406h188" stroke="#d9d1be" stroke-width="8" stroke-linecap="round"/>
   </g>
-  <rect x="70" y="39" width="388" height="448" rx="36" fill="none" stroke="#d6336c" stroke-width="12"/>
+  <g transform="rotate(12 307 256)">
+    <rect x="193" y="78" width="228" height="356" rx="30" fill="#d6336c" stroke="#f8f4eb" stroke-width="12"/>
+    <path d="M213 104h188" stroke="#f5a4bd" stroke-width="8" stroke-linecap="round"/>
+    <path d="M213 406h188" stroke="#f5a4bd" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <path d="m256 126 36 83 92 47-92 47-36 83-36-83-92-47 92-47z" fill="#211d25" stroke="#f8f4eb" stroke-width="12" stroke-linejoin="round"/>
+  <path d="m256 145 27 68-27 36-73-37z" fill="#d6336c"/>
+  <path d="m256 145-73 67 73 37z" fill="#f8f4eb"/>
+  <path d="m183 212 73 37v100z" fill="#d6336c"/>
+  <path d="m329 212-73 37v100z" fill="#f8f4eb"/>
+  <circle cx="256" cy="249" r="13" fill="#211d25" stroke="#f8f4eb" stroke-width="7"/>
 </svg>
