@@ -11,7 +11,7 @@ body{background:var(--bg);color:var(--ink);font:15px/1.4 "Avenir Next","Trebuche
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 14px 8px;border-bottom:1px solid var(--line)}
 header::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:6}
 h1{margin:0 0 8px;font-size:20px;font-weight:800}h1 span{color:var(--pink)}
-.install-row{display:flex;justify-content:flex-end;margin:-2px 0 8px}.install-btn{border:1.5px solid var(--pink);border-radius:99px;background:var(--surf);color:var(--pink);padding:5px 12px;font:inherit;font-size:13px;font-weight:800}.install-btn[hidden]{display:none}
+.install-row{display:flex;justify-content:flex-end;gap:6px;margin:-2px 0 8px}.install-btn{border:1.5px solid var(--pink);border-radius:99px;background:var(--surf);color:var(--pink);padding:5px 12px;font:inherit;font-size:13px;font-weight:800}.install-btn[hidden]{display:none}.install-help{border-color:var(--line);color:var(--ink)}
 .sb{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--surf);color:var(--ink);font-size:16px;outline:none}
 .sb:focus{border-color:var(--pink)}
 .chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
@@ -78,7 +78,7 @@ body.hasbar main{padding-bottom:90px}textarea.sb{font-size:14px}
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="theme-color" content="#EFE9DC">
 </head><body>
-<header><div class="hrow"><h1>Weiss Schwarz <span>Database</span></h1><div class="seg" id="tabs"><button id="tc" aria-pressed="true">Cards</button><button id="td" aria-pressed="false">Decks</button></div></div><div class="install-row"><button class="install-btn" id="install" type="button">＋ Install app</button></div>
+<header><div class="hrow"><h1>Weiss Schwarz <span>Database</span></h1><div class="seg" id="tabs"><button id="tc" aria-pressed="true">Cards</button><button id="td" aria-pressed="false">Decks</button></div></div><div class="install-row"><button class="install-btn install-help" id="install-help" type="button">Cara install</button><button class="install-btn" id="install" type="button">＋ Install app</button></div>
 <div class="bar cv"><input class="sb" id="q" type="search" placeholder="Search code, name, trait or effect…" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button class="scan" id="scan" aria-label="Scan a card with the camera">&#128247;</button><input type="file" id="cam" accept="image/*" capture="environment" hidden></div>
 <div class="two cv"><div class="cw"><input class="sb combo" id="ser" placeholder="Series: all (type or pick)" autocomplete="off" autocapitalize="off"></div><div class="cw"><input class="sb combo" id="set" placeholder="Set: all in series" autocomplete="off" autocapitalize="off"></div></div>
 <div class="chips cv" id="chips"></div></header>
@@ -440,20 +440,19 @@ updBar();
 chips();render();
 
 const installBtn=$('install');
+const installHelpBtn=$('install-help');
 let installPrompt=null;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-if(isStandalone())installBtn.hidden=true;
-window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;installBtn.hidden=false});
-window.addEventListener('appinstalled',()=>{installPrompt=null;installBtn.hidden=true});
+if(isStandalone()){installBtn.hidden=true;installHelpBtn.hidden=true}
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;installBtn.hidden=false;installHelpBtn.hidden=false});
+window.addEventListener('appinstalled',()=>{installPrompt=null;installBtn.hidden=true;installHelpBtn.hidden=true});
 function showInstallGuide(){
- const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- const steps=ios
-  ?'<p>Di Safari, tekan tombol <b>Bagikan</b>, pilih <b>Tambahkan ke Layar Utama</b>, lalu tekan <b>Tambah</b>.</p>'
-  :'<p>Di Chrome, buka menu <b>⋮</b> lalu pilih <b>Install app</b> atau <b>Add to Home screen</b>.</p>';
- $('panel').innerHTML='<button class="x" aria-label="Close">×</button><h2 style="margin:2px 42px 10px 0">Install Weiss Schwarz Database</h2>'+steps+'<p class="meta">Ikon WS akan muncul di layar utama dan aplikasi terbuka dalam mode app.</p>';
+ const steps='<p><b>Android:</b> tekan <b>Install app</b>. Jika prompt tidak muncul, buka menu Chrome <b>⋮ → Install app</b> atau <b>Add to Home screen</b>.</p><p><b>iPhone/iPad:</b> di Safari tekan <b>Bagikan → Tambahkan ke Layar Utama → Tambah</b>.</p>';
+ $('panel').innerHTML='<button class="x" aria-label="Close">×</button><h2 style="margin:2px 42px 10px 0">Cara install</h2>'+steps+'<p class="meta">Setelah ditambahkan, ikon aplikasi muncul di layar utama.</p>';
  $('panel').querySelector('.x').onclick=close_;
  $('sheet').hidden=false;
 }
+installHelpBtn.onclick=showInstallGuide;
 installBtn.onclick=async()=>{
  if(!installPrompt){showInstallGuide();return}
  try{
