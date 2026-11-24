@@ -3,8 +3,8 @@
 Searchable Weiss Schwarz card database for mobile (iPhone), with filters, a deck builder, deck export as an image, and favorites.
 
 - **Open it:** enable GitHub Pages (Settings → Pages → Deploy from branch → `main` / root) and open the Pages URL on your phone.
-- **Install on Android:** open the page in Chrome and tap **Install app** (or Chrome menu → **Install app**).
-- **Install on iPhone/iPad:** open the page in Safari and tap **Share → Add to Home Screen**. The **Install app** button shows these steps too.
+- **Install on Android:** open the page in Chrome and tap **Install app** (or Chrome menu → **Install app** / **Add to Home screen**).
+- **Install on iPhone/iPad:** open the page in Safari and tap **Share → Add to Home Screen**. The **Cara install** button shows both platform guides.
 - **Offline:** the app shell and card database are cached, along with up to 24 recently viewed card-image sheets. Previously cached content remains available when offline.
 - **Data:** `index.html` embeds the card data (gzip + base64). Card images are packed into sprite sheets in `sheets/`.
 - **Decks and favorites** are stored in the browser's `localStorage` on each device.
