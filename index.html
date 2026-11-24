@@ -248,6 +248,46 @@ function validScanCodes(){
  });
  return SCAN_CODES;
 }
+function imageFingerprint(source, sx=0, sy=0, sw=null, sh=null){
+ const cw=32,ch=44,cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+ const ctx=cv.getContext('2d',{willReadFrequently:true});
+ ctx.drawImage(source,sx,sy,sw===null?source.width:sw,sh===null?source.height:sh,0,0,cw,ch);
+ const data=ctx.getImageData(0,0,cw,ch).data,fp=[];
+ for(let i=0;i<data.length;i+=4)fp.push((data[i]+data[i+1]+data[i+2])/3);
+ return fp;
+}
+function fingerprintDistance(a,b){
+ if(!a||!b||a.length!==b.length)return 1e9;
+ let sum=0;
+ for(let i=0;i<a.length;i++){const d=a[i]-b[i];sum+=d*d}
+ return sum/(a.length*255*255);
+}
+async function visualMatchPhoto(photoBitmap){
+ const sample=document.createElement('canvas');sample.width=32;sample.height=44;
+ const sx=Math.floor(photoBitmap.width*.06),sy=Math.floor(photoBitmap.height*.02);
+ const sw=Math.floor(photoBitmap.width*.88),sh=Math.floor(photoBitmap.height*.96);
+ sample.getContext('2d',{willReadFrequently:true}).drawImage(photoBitmap,sx,sy,sw,sh,0,0,32,44);
+ const photoFp=imageFingerprint(sample);
+ const ranked=[];
+ const sheetCache=new Map();
+ for(const c of CARDS){
+  if(!c.has||c.sh==null)continue;
+  if(!sheetCache.has(c.sh)){
+   const im=await loadImg('sheets/'+SHEETS[c.sh]);if(!im)continue;
+   sheetCache.set(c.sh,im);
+  }
+  const im=sheetCache.get(c.sh),[tx,ty,tw,th]=tl(c);
+  const cv=document.createElement('canvas');cv.width=32;cv.height=44;
+  cv.getContext('2d',{willReadFrequently:true}).drawImage(im,tx,ty,tw,th,0,0,32,44);
+  const fp=imageFingerprint(cv);
+  const d=fingerprintDistance(photoFp,fp);
+  ranked.push([c.code,d]);
+  if(ranked.length%800===0)await new Promise(r=>setTimeout(r,0));
+ }
+ ranked.sort((a,b)=>a[1]-b[1]);
+ const top=ranked.slice(0,8).map(x=>x[0]);
+ return top;
+}
 function expandOcrCodeVariants(code){
  const raw=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
  const variants=new Set([raw]);
@@ -318,8 +358,14 @@ $('cam').onchange=async e=>{
   await worker.terminate();
    const text=combined.toUpperCase();
   const result=matchScannedCode(text);
-   if(!result.length){const sample=text.replace(/\s+/g,' ').trim().slice(0,60);banner('No match found.'+(sample?' OCR read: '+esc(sample):' OCR could not read a card code.')+' Fill the frame with the small card code.',true);return}
-  scanSet=new Set(result);$('q').value='';banner('Scan result: '+result.length+' likely match'+(result.length>1?'es':''),true);render();
+   if(result.length){
+    scanSet=new Set(result);$('q').value='';banner('Scan result: '+result.length+' likely match'+(result.length>1?'es':''),true);render();
+    return;
+   }
+   banner('Reading card image…',false);
+   const visual=await visualMatchPhoto(bitmap);
+   if(!visual.length){const sample=text.replace(/\s+/g,' ').trim().slice(0,60);banner('No match found.'+(sample?' OCR read: '+esc(sample):''),true);return}
+   scanSet=new Set(visual.slice(0,5));$('q').value='';banner('Visual match candidates: '+scanSet.size,true);render();
  }catch(err){banner('Card scan failed. Check your internet connection and try again.',false)}
 };
 
