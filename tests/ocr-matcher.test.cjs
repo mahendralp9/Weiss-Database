@@ -24,7 +24,9 @@ test('matches noisy OCR from both uploaded card photos without adjacent-card fal
  assert.deepEqual(Array.from(send({type:'match',id:2,text:'GGO/SE5O-09'}).codes),['GGO/SE50-09']);
  assert.deepEqual(Array.from(send({type:'match',id:3,text:'GGO/SF50-09'}).codes),['GGO/SE50-09']);
  assert.deepEqual(Array.from(send({type:'match',id:4,text:'GOrSESOP SSPR 0500 ine 46a'}).codes),['GGO/SE50-P04']);
- assert.deepEqual(Array.from(send({type:'match',id:5,text:'ST a X a1GGO/S59-037RR'}).codes),['GGO/S59-E037']);
- assert.deepEqual(Array.from(send({type:'match',id:6,text:'SOrSESO SPR 0500 4ia'}).codes),[]);
- assert.deepEqual(Array.from(send({type:'match',id:7,text:'ZZZ/ZZZZ-9999'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:5,text:'SGOISESOPUSSPR'}).codes),['GGO/SE50-P04']);
+ assert.deepEqual(Array.from(send({type:'match',id:6,text:'ST a X a1GGO/S59-037RR'}).codes),['GGO/S59-E037']);
+ assert.deepEqual(Array.from(send({type:'match',id:7,text:'SSBL EIRTAFITRD9 QO/3830 45PR 0500 C RETAKE 4 - 8 RRO REET 8'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:8,text:'SOrSESO SPR 0500 4ia'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:9,text:'ZZZ/ZZZZ-9999'}).codes),[]);
 });
