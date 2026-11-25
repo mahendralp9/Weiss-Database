@@ -7,7 +7,7 @@ Mobile-first Weiss Schwarz card database with a home dashboard for search, favor
 - **Install on iPhone/iPad:** open the page in Safari and tap **Share → Add to Home Screen**. The **Cara install** button shows both platform guides.
 - **Offline:** the app shell and card database are cached, along with up to 24 recently viewed card-image sheets. Previously cached content remains available when offline.
 - **Card images:** previews use official English images when available, then official Japanese full-size images; bundled sprite sheets remain the fallback. Effect text is shown separately from the image.
-- **Data:** `index.html` embeds the card data (gzip + base64). Card images are packed into sprite sheets in `sheets/`.
+- **Data:** `index.html` embeds the card data (gzip + base64). Card images are packed into sprite sheets in `sheets/`. Some effect text is supplemented from simulator `CardData.txt` data, used with permission.
 - **Decks, favorites, collection stock, and recently viewed cards** are stored in the browser's `localStorage` on each device.
 
 ## Layout
