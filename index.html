@@ -356,26 +356,29 @@ $('cam').onchange=async e=>{
   catch(err){pendingWorker.then(w=>w.terminate()).catch(()=>{});throw err}
   await timed(worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-',preserve_interword_spaces:'1',tessedit_pageseg_mode:'11'}),10000,'OCR setup');
   const crops=[
-   [Math.floor(w*.04),Math.floor(h*.73),Math.floor(w*.62),Math.floor(h*.08),'Reading card code…'],
-   [Math.floor(w*.04),Math.floor(h*.82),Math.floor(w*.62),Math.floor(h*.08),'Checking lower card code…'],
-   [Math.floor(w*.04),Math.floor(h*.90),Math.floor(w*.62),Math.floor(h*.08),'Checking card bottom…'],
-   [Math.floor(w*.02),Math.floor(h*.62),Math.floor(w*.96),Math.floor(h*.34),'Reading lower card text…']
+   [Math.floor(w*.10),Math.floor(h*.755),Math.floor(w*.43),Math.floor(h*.045),'Reading card number…','7'],
+   [Math.floor(w*.04),Math.floor(h*.73),Math.floor(w*.62),Math.floor(h*.08),'Reading card code…','11'],
+   [Math.floor(w*.04),Math.floor(h*.82),Math.floor(w*.62),Math.floor(h*.08),'Checking lower card code…','11'],
+   [Math.floor(w*.04),Math.floor(h*.90),Math.floor(w*.62),Math.floor(h*.08),'Checking card bottom…','11'],
+   [Math.floor(w*.02),Math.floor(h*.62),Math.floor(w*.96),Math.floor(h*.34),'Reading lower card text…','11']
   ];
   let combined='',result=[];
   for(let ci=0;ci<crops.length;ci++){
    banner(crops[ci][4],false);
-   const [x,y,cw,ch]=crops[ci],upscale=Math.min(ci<3?4:2,1800/Math.max(cw,ch));
+   const [x,y,cw,ch]=crops[ci],upscale=Math.min(ci===0?7:ci<4?4:2,1800/Math.max(cw,ch));
    const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(cw*upscale));cv.height=Math.max(1,Math.round(ch*upscale));
    const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.filter='contrast(1.5) grayscale(1)';ctx.drawImage(bitmap,x,y,cw,ch,0,0,cv.width,cv.height);
    const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',0.9));
-   if(ci<3)await timed(worker.setParameters({tessedit_pageseg_mode:'11'}),10000,'OCR setup');
+   await timed(worker.setParameters({tessedit_pageseg_mode:crops[ci][5]}),10000,'OCR setup');
    const recognized=await timed(worker.recognize(blob||cv),10000,'OCR recognition');
    let cropText=String(recognized.data&&recognized.data.text||'');
    combined+=' '+cropText;
    banner('Matching card code…',false);
    result=await timed(matchScannedCode(cropText),10000,'card matching');
-   if(!result.length&&ci<3){
-    await timed(worker.setParameters({tessedit_pageseg_mode:'6'}),10000,'OCR setup');
+   const retryModes=ci===0?['11','6']:ci<=3?['6']:[];
+   for(const mode of retryModes){
+    if(result.length)break;
+    await timed(worker.setParameters({tessedit_pageseg_mode:mode}),10000,'OCR setup');
     const alternate=await timed(worker.recognize(blob||cv),10000,'OCR recognition');
     cropText=String(alternate.data&&alternate.data.text||'');
     combined+=' '+cropText;
