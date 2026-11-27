@@ -73,3 +73,11 @@ test('scales high-resolution scan images before cropping',()=>{
  assert.equal(surface.height,2400);
  assert.deepEqual(scanSurfaceDrawCalls.pop(),[bitmap,0,0,1600,2400]);
 });
+
+test('shows deck-building limits from the simulator flags (any number / up to N / shared limit)',()=>{
+ assert.match(formatEff(byCode.get('ANM/W138-045').eff),/any number of cards with the same card name as this card into your deck/);
+ assert.match(byCode.get('BD/W47-T11').eff,/up to 5 cards with the same name as this card in your deck/);
+ assert.match(byCode.get('BD/WE42-008').eff,/up to 4 copies of cards with the name of this card and "She Who Colors the World" Kaoru Seta/);
+ const rule=/any number of cards with the same (card )?name|up to \d+ (cards|copies)/;
+ assert.equal(rule.test(byCode.get('AW/S43-E044').eff),true);
+});
