@@ -364,8 +364,56 @@ $('cam').onchange=async e=>{
    [Math.floor(w*.02),Math.floor(h*.925),Math.floor(w*.58),Math.floor(h*.055),'Reading the card-code strip…','7'],
    [Math.floor(w*.02),Math.floor(h*.62),Math.floor(w*.96),Math.floor(h*.34),'Reading lower card text…','11']
   ];
-  let combined='',result=[];
+  let combined='',result=[],stripText='';
+  banner('Searching for the card-code strip…',false);
+  const stripWidth=Math.floor(w*.68),stripHeight=Math.max(1,Math.floor(h*.045)),stripX=Math.floor(w*.01);
+  const stripScale=Math.min(5,1600/stripWidth);
+  const lineHeight=Math.ceil(stripHeight*stripScale),lineGap=Math.max(12,Math.ceil(lineHeight*.18));
+  const stripStarts=[];
+  for(let y=.52;y<=.955;y+=.035)stripStarts.push(Math.floor(h*y));
+  const stripCanvas=document.createElement('canvas');
+  stripCanvas.width=Math.ceil(stripWidth*stripScale);
+  stripCanvas.height=stripStarts.length*(lineHeight+lineGap);
+  const stripContext=stripCanvas.getContext('2d',{willReadFrequently:true});
+  stripContext.fillStyle='#fff';stripContext.fillRect(0,0,stripCanvas.width,stripCanvas.height);
+  stripContext.filter='grayscale(1) contrast(1.8)';
+  stripStarts.forEach((y,index)=>stripContext.drawImage(bitmap,stripX,y,stripWidth,stripHeight,0,index*(lineHeight+lineGap),stripCanvas.width,lineHeight));
+  const stripBlob=await new Promise(resolve=>stripCanvas.toBlob(resolve,'image/jpeg',0.95));
+  await timed(worker.setParameters({tessedit_pageseg_mode:'11'}),10000,'OCR setup');
+  let stripRecognition=await timed(worker.recognize(stripBlob||stripCanvas),12000,'card-code recognition');
+  const stripLines=(stripRecognition.data&&stripRecognition.data.lines||[]).slice().sort((a,b)=>(b.confidence||0)-(a.confidence||0)).map(line=>String(line.text||'').trim()).filter(Boolean);
+  stripText=[...stripLines,String(stripRecognition.data&&stripRecognition.data.text||'').trim()].filter(Boolean).join(' ');
+  combined+=' '+stripText;
+  const codeCandidates=texts=>[...new Set(texts)].filter(text=>{
+   const key=text.toUpperCase().replace(/[^A-Z0-9]/g,'');
+   return /[\/\\|]/.test(text)||(key.length>=7&&key.length<=18&&/[A-Z]/.test(key)&&/\d/.test(key));
+  }).slice(0,10);
+  for(const text of codeCandidates([...stripLines,String(stripRecognition.data&&stripRecognition.data.text||'')].filter(Boolean))){
+   if(!text.trim())continue;
+   result=await timed(matchScannedCode(text),10000,'card matching');
+   if(result.length)break;
+  }
+  if(!result.length){
+   const stripPixels=stripContext.getImageData(0,0,stripCanvas.width,stripCanvas.height);
+   for(let i=0;i<stripPixels.data.length;i+=4){
+    const luminance=.299*stripPixels.data[i]+.587*stripPixels.data[i+1]+.114*stripPixels.data[i+2],value=luminance>150?255:0;
+    stripPixels.data[i]=stripPixels.data[i+1]=stripPixels.data[i+2]=value;
+   }
+   stripContext.putImageData(stripPixels,0,0);
+   const binaryStrip=await new Promise(resolve=>stripCanvas.toBlob(resolve,'image/png'));
+   await timed(worker.setParameters({tessedit_pageseg_mode:'11'}),10000,'OCR setup');
+   stripRecognition=await timed(worker.recognize(binaryStrip||stripCanvas),12000,'card-code recognition');
+   const binaryLines=(stripRecognition.data&&stripRecognition.data.lines||[]).slice().sort((a,b)=>(b.confidence||0)-(a.confidence||0)).map(line=>String(line.text||'').trim()).filter(Boolean);
+   stripText+=' '+[...binaryLines,String(stripRecognition.data&&stripRecognition.data.text||'').trim()].filter(Boolean).join(' ');
+   combined+=' '+stripText;
+   for(const text of codeCandidates([...binaryLines,String(stripRecognition.data&&stripRecognition.data.text||'')].filter(Boolean))){
+    if(!text.trim())continue;
+    result=await timed(matchScannedCode(text),10000,'card matching');
+    if(result.length)break;
+   }
+  }
   for(let ci=0;ci<crops.length;ci++){
+   if(result.length)break;
    banner(crops[ci][4],false);
    const [x,y,cw,ch]=crops[ci],upscale=Math.min(ci===0||ci===4?7:ci<4?4:2,1800/Math.max(cw,ch));
    const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(cw*upscale));cv.height=Math.max(1,Math.round(ch*upscale));
@@ -406,9 +454,9 @@ $('cam').onchange=async e=>{
   if(result.length){
    scanSet=new Set(result);$('q').value='';banner('Scan result: '+result.length+' likely match'+(result.length>1?'es':''),true);render();
   }else{
-   const text=combined.toUpperCase();
+   const text=(stripText||combined).toUpperCase();
    const sample=text.replace(/\s+/g,' ').trim().slice(0,60);
-   banner('No match found.'+(sample?' OCR read: '+esc(sample):' The card code was not readable.'),true);
+   banner('No match found. Keep the card upright, fill the frame, and make sure its bottom-left code is sharp and free of glare.'+(sample?' OCR read: '+esc(sample):' The card code was not readable.'),true);
   }
  }catch(err){
   const reason=err&&err.message||'Unknown scan error';
