@@ -1,81 +1,41 @@
 # Weiss Schwarz Database
 
-A mobile-first, installable Weiss Schwarz card database. Search the card catalog, read card effects, track favorites and collection stock, scan card codes, and build or export decks.
+A fast, phone-friendly database of **40,000+ Weiss Schwarz cards**. Search any card in seconds, keep your favorites and collection in one place, build decks, and scan a physical card with your camera to find it. It runs in the browser and installs on your home screen like a regular app.
 
-## Open the app
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Home screen of the Weiss Schwarz Database app" width="320">
+</p>
 
-The app is a static website and does not need a server-side database or account.
+## What you can do
 
-1. In the GitHub repository, open **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Select the `main` branch and `/ (root)` folder, then save.
-4. Open the published Pages URL shown in the Pages settings. The first deployment may take a few minutes.
+**Find cards fast.** Search by name, card code, trait or effect text. Narrow results with colour, level, climax, favorite and stock filters, and pick a series and set. Switch between a large image grid and a text-friendly list.
 
-The site must be served over HTTPS (GitHub Pages does this automatically) or from `localhost` for installation and offline features to work.
+**Read every card.** Open a card to see a big preview next to its full effect text, so you can read the card without squinting at the image.
 
-## Install on your device
+**Scan a card.** Point the camera at the small card code printed above the name plate (for example `GGO/S59-037`), or pick a photo, and the app finds the matching card.
 
-Open the published site in the recommended browser for your device:
+**Keep favorites.** Tap the star on any card to save it. Your favorites and recently viewed cards sit right on the home screen.
 
-- **Android:** In Chrome, tap **Install app** if it appears. You can also open **⋮ → Install app** or **Add to Home screen**.
-- **iPhone or iPad:** In Safari, tap **Share → Add to Home Screen → Add**.
-- **Desktop:** In a supported browser, use the install icon in the address bar or the browser menu's **Install app** option, if available.
+**Track your collection.** Set how many copies of each card you own and see your collection totals at a glance.
 
-The app's **How to install** button also shows the Android and iPhone/iPad steps. Once installed, launch it from your home screen or app launcher.
+**Build decks.** Create as many decks as you like with a live counter for the 50-card total, climax limit and copy limit. Choose a cover card, copy or import a deck list, and export a deck as an image to share.
 
-## Features
+## Get it on your phone
 
-- **Card search:** Search card codes, names, traits, or effect text. Filter by series and set, and use the color, level, climax, favorite, and collection filters.
-- **Card details:** View card metadata, effect text, and a larger image preview. Mark cards as favorites and keep a per-card collection stock count.
-- **Card scanning:** Use the camera button to read a card code from an image and find matching catalog entries. OCR loads from a CDN the first time it is needed, so scanning initially requires internet access.
-- **Home dashboard:** Quickly reach search, favorites, recently viewed cards, and decks.
-- **Deck builder:** Create and name multiple decks, add cards from the catalog, set a cover card, import a text deck list, and duplicate or delete decks. The builder checks the 50-card deck size, maximum of 8 climaxes, and maximum of 4 copies of a card.
-- **Deck sharing:** Copy a deck list or export a deck image.
-- **Installable and offline-capable:** The service worker caches the app shell and database. It also retains up to 24 recently used sprite sheets. Remote card images and the initial OCR download require an internet connection; bundled sprite sheets are used as the image fallback when available.
+Open the app's web address in your phone's browser, then add it to your home screen:
 
-## Data and image sources
+- **iPhone / iPad:** open it in Safari, tap **Share**, then **Add to Home Screen**.
+- **Android:** open it in Chrome, then tap **Install app** (or menu → **Add to Home screen**).
 
-The card catalog is embedded in `index.html` as gzip-compressed JSON encoded with base64. Card effect text is shown separately from card artwork.
+After that it opens full screen from its own icon. Once you have opened it, the card database and the images you have viewed stay available even without a connection.
 
-Image selection prefers official English images when available, then high-resolution LittleAKIBA images, followed by official Japanese images and bundled sprite sheets as fallbacks. Remote image availability depends on the source hosts and an internet connection.
+## Good to know
 
-Some effect text comes from simulator `CardData.txt` data and LittleAKIBA translations; these sources are used with permission. The catalog does not include every Weiss Schwarz title or every card printing. Titles excluded on request include Marvel, Disney family, Pixar, Star Wars, RWBY, Adventure Time, Avatar: The Last Airbender, and WS Blau.
+- Favorites, collection counts, decks and recently viewed cards are saved **on your device** (in the browser), so each device keeps its own.
+- Card images come from official card images where available, and bundled card-image sheets are used as a fallback.
+- The database follows the Japanese release. Licensed Western titles (Marvel, Disney family, Pixar, Star Wars), English-only titles (RWBY, Adventure Time, Avatar: The Last Airbender) and the discontinued WS Blau line are not included.
+- Card scanning needs an internet connection the first time it is used, to load its text-recognition library.
 
-## Privacy and storage
+## For developers
 
-Favorites, collection stock, recently viewed cards, and decks are stored in the browser's `localStorage` on the current device. They are not synchronized between devices or uploaded to this repository. Clearing the browser's site data removes these saved items.
-
-## Run locally
-
-From the repository root, start a local static web server:
-
-```sh
-python3 -m http.server 8000
-```
-
-Then open <http://localhost:8000>. Serving through localhost allows the browser to use service workers and other app features that do not work reliably from a `file://` URL.
-
-## Development and tests
-
-The app is intentionally built as a static site: the main interface and embedded card data are in `index.html`, with the OCR matcher in `ocr-matcher.js` and the service worker in `sw.js`.
-
-Run the test suite with Node.js:
-
-```sh
-node --test tests/*.test.cjs
-```
-
-The tests cover card data, effect formatting and rendering, image-source selection, and OCR matching.
-
-## Repository layout
-
-| Path | Description |
-| --- | --- |
-| `index.html` | Application UI, styles, and embedded card catalog |
-| `ocr-matcher.js` | Background worker for matching recognized card codes |
-| `sw.js` | App-shell, offline, and recently viewed sprite-sheet caching |
-| `sheets/sheet_NNN.jpg` | Bundled card sprite sheets |
-| `sheets/hi_ggo.jpg`, `sheets/hi_ggo2.jpg` | Gun Gale Online sprite sheets |
-| `manifest.webmanifest`, `app-icon.svg`, `icon-*.png` | PWA metadata and icons |
-| `tools/` | Utility scripts used for card image and sprite-sheet preparation |
-| `tests/` | Node.js tests for catalog behavior and OCR matching |
+The app is a single static page (`index.html`) with the card data embedded, plus card-image sheets in `sheets/`. It is served with GitHub Pages straight from the `main` branch. Helper scripts used to rebuild the image sheets are in `tools/`, and the scan matching has tests in `tests/`.
