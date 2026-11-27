@@ -11,6 +11,9 @@ const byCode=new Map(cards.map(card=>[card.code,card]));
 const formatterStart=html.indexOf('const formatEff=s=>{');
 const formatterEnd=html.indexOf('\n};',formatterStart)+3;
 const formatEff=new Function(html.slice(formatterStart,formatterEnd)+';return formatEff;')();
+const imageStart=html.indexOf('const cardImageURL=c=>{');
+const imageEnd=html.indexOf('\n};',imageStart)+3;
+const cardImageURL=new Function(html.slice(imageStart,imageEnd)+';return cardImageURL;')();
 
 test('imports Charlotte W40 effects with readable tags and separate abilities',()=>{
  assert.match(byCode.get('CHA/W40-003').eff,/^\[AUTO\] /);
@@ -30,4 +33,20 @@ test('imports other simulator text styles and renders their symbols readably',()
  assert.match(byCode.get('AGS/W108-015').eff,/\[CHOICE TRIGGER\]/);
  assert.match(byCode.get('AGS/W108-015').eff,/\[SOUL TRIGGER\]/);
  assert.doesNotMatch(['AGS/W108-027','STS/W140-063','AW/S18-E052','AGS/W108-015'].map(code=>byCode.get(code).eff).join('\n'),/<sprite\b/i);
+});
+
+test('imports missing Summer Pockets TV Animation effects',()=>{
+ const codes=['SMP/W137-005','SMP/W137-007','SMP/W137-013','SMP/W137-014','SMP/W137-034','SMP/W137-035','SMP/W137-071','SMP/W137-072','SMP/W137-073','SMP/W137-098','SMP/W137-100'];
+ for(const code of codes) assert.ok(byCode.get(code)?.eff,`${code} should have effect text`);
+ assert.match(byCode.get('SMP/W137-005').eff,/^\[ACT\] CONCENTRATION/);
+ assert.match(byCode.get('SMP/W137-007').eff,/^\[AUTO\]/);
+ assert.match(byCode.get('SMP/W137-013').eff,/^\[CONT\]/);
+});
+
+test('uses validated LittleAKIBA images when no English image is available',()=>{
+ const card=byCode.get('SMP/W137-001');
+ assert.match(card.laImg,/^https:\/\/images\.littleakiba\.com\/tcg\/card\d+-large\.jpg$/);
+ assert.equal(cardImageURL(card),card.laImg);
+ assert.match(cardImageURL({laImg:'https://untrusted.example/card.jpg',jpImg:'https://ws-tcg.com/card.png'}),/^https:\/\/ws-tcg\.com\//);
+ assert.equal(cardImageURL({laImg:'https://images.littleakiba.com/tcg/card1-large.jpg',img:'https://en.ws-tcg.com/card.png'}),'https://en.ws-tcg.com/card.png');
 });
