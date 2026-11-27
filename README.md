@@ -1,28 +1,41 @@
 # Weiss Schwarz Database
 
-Mobile-first Weiss Schwarz card database with a home dashboard for search, favorites, recently viewed cards, and collection shortcuts, plus filters, a deck builder, and deck export.
+A fast, phone-friendly database of **40,000+ Weiss Schwarz cards**. Search any card in seconds, keep your favorites and collection in one place, build decks, and scan a physical card with your camera to find it. It runs in the browser and installs on your home screen like a regular app.
 
-- **Open it:** enable GitHub Pages (Settings → Pages → Deploy from branch → `main` / root) and open the Pages URL on your phone.
-- **Install on Android:** open the page in Chrome and tap **Install app** (or Chrome menu → **Install app** / **Add to Home screen**).
-- **Install on iPhone/iPad:** open the page in Safari and tap **Share → Add to Home Screen**. The **Cara install** button shows both platform guides.
-- **Offline:** the app shell and card database are cached, along with up to 24 recently viewed card-image sheets. Previously cached content remains available when offline.
-- **Card images:** previews use official English images when available, then official Japanese full-size images; bundled sprite sheets remain the fallback. Effect text is shown separately from the image.
-- **Data:** `index.html` embeds the card data (gzip + base64). Card images are packed into sprite sheets in `sheets/`. Some effect text is supplemented from simulator `CardData.txt` data, used with permission.
-- **Decks, favorites, collection stock, and recently viewed cards** are stored in the browser's `localStorage` on each device.
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Home screen of the Weiss Schwarz Database app" width="320">
+</p>
 
-## Layout
+## What you can do
 
-| Path | What it is |
-| --- | --- |
-| `index.html` | The whole app (UI + embedded card data) |
-| `sheets/sheet_NNN.jpg` | Sprite sheets of card images. Sheets 0-34 are 96x134 tiles (32x24), 35-133 are 128x179 (24x18), 134+ are 256x358 (12x8) |
-| `sheets/hi_ggo.jpg`, `hi_ggo2.jpg` | 190x266 tiles (16 columns) for Gun Gale Online cards |
-| `manifest.webmanifest`, `app-icon.svg`, `icon-*.png` | PWA metadata and app icons |
-| `sw.js` | App-shell and recently viewed image-sheet caching |
-| `tools/` | Scripts used to rebuild sheets from the simulator data |
+**Find cards fast.** Search by name, card code, trait or effect text. Narrow results with colour, level, climax, favorite and stock filters, and pick a series and set. Switch between a large image grid and a text-friendly list.
 
-## Scope
+**Read every card.** Open a card to see a big preview next to its full effect text, so you can read the card without squinting at the image.
 
-Titles removed on request: licensed Western IP (Marvel, Disney family, Pixar, Star Wars), EN-only IP (RWBY, Adventure Time, Avatar the Last Airbender) and WS Blau (discontinued).
+**Scan a card.** Point the camera at the small card code printed above the name plate (for example `GGO/S59-037`), or pick a photo, and the app finds the matching card.
 
-**Card scanning:** the camera button checks several lower-card code areas with Tesseract.js, then matches OCR text against the catalog in a background worker. An internet connection is needed to load the OCR library on first use.
+**Keep favorites.** Tap the star on any card to save it. Your favorites and recently viewed cards sit right on the home screen.
+
+**Track your collection.** Set how many copies of each card you own and see your collection totals at a glance.
+
+**Build decks.** Create as many decks as you like with a live counter for the 50-card total, climax limit and copy limit. Choose a cover card, copy or import a deck list, and export a deck as an image to share.
+
+## Get it on your phone
+
+Open the app's web address in your phone's browser, then add it to your home screen:
+
+- **iPhone / iPad:** open it in Safari, tap **Share**, then **Add to Home Screen**.
+- **Android:** open it in Chrome, then tap **Install app** (or menu → **Add to Home screen**).
+
+After that it opens full screen from its own icon. Once you have opened it, the card database and the images you have viewed stay available even without a connection.
+
+## Good to know
+
+- Favorites, collection counts, decks and recently viewed cards are saved **on your device** (in the browser), so each device keeps its own.
+- Card images come from official card images where available, and bundled card-image sheets are used as a fallback.
+- The database follows the Japanese release. Licensed Western titles (Marvel, Disney family, Pixar, Star Wars), English-only titles (RWBY, Adventure Time, Avatar: The Last Airbender) and the discontinued WS Blau line are not included.
+- Card scanning needs an internet connection the first time it is used, to load its text-recognition library.
+
+## For developers
+
+The app is a single static page (`index.html`) with the card data embedded, plus card-image sheets in `sheets/`. It is served with GitHub Pages straight from the `main` branch. Helper scripts used to rebuild the image sheets are in `tools/`, and the scan matching has tests in `tests/`.
