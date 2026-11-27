@@ -29,4 +29,7 @@ test('matches noisy OCR from both uploaded card photos without adjacent-card fal
  assert.deepEqual(Array.from(send({type:'match',id:7,text:'SSBL EIRTAFITRD9 QO/3830 45PR 0500 C RETAKE 4 - 8 RRO REET 8'}).codes),[]);
  assert.deepEqual(Array.from(send({type:'match',id:8,text:'SOrSESO SPR 0500 4ia'}).codes),[]);
  assert.deepEqual(Array.from(send({type:'match',id:9,text:'ZZZ/ZZZZ-9999'}).codes),[]);
+ assert.deepEqual(Array.from(send({type:'match',id:10,text:'SMP/W60-096 U'}).codes),['SMP/W60-096']);
+ assert.deepEqual(Array.from(send({type:'match',id:11,text:'SMPW60-096U'}).codes),['SMP/W60-096']);
+ assert.deepEqual(Array.from(send({type:'match',id:12,text:'SMPW6O-O96 U'}).codes),['SMP/W60-096']);
 });

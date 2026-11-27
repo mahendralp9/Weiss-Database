@@ -50,3 +50,12 @@ test('uses validated LittleAKIBA images when no English image is available',()=>
  assert.match(cardImageURL({laImg:'https://untrusted.example/card.jpg',jpImg:'https://ws-tcg.com/card.png'}),/^https:\/\/ws-tcg\.com\//);
  assert.equal(cardImageURL({laImg:'https://images.littleakiba.com/tcg/card1-large.jpg',img:'https://en.ws-tcg.com/card.png'}),'https://en.ws-tcg.com/card.png');
 });
+
+test('includes A Certain Guy\'s Talk with its corrected card code',()=>{
+ const card=byCode.get('SMP/W60-096');
+ assert.equal(card?.name,"A Certain Guy's Talk");
+ assert.equal(card?.type,'Event');
+ assert.match(card?.eff||'',/choose up to 2 level 0 or lower characters/i);
+ assert.match(card?.laImg||'',/^https:\/\/images\.littleakiba\.com\/tcg\/card\d+-large\.jpg$/);
+ assert.equal(cards.some(item=>item.code===':'),false);
+});
