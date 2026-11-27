@@ -334,6 +334,12 @@ async function matchScannedCode(text){
   catch(error){matcherRequests.delete(id);reject(error)}
  });
 }
+function createScanSurface(bitmap,maxWidth=1600){
+ const scale=Math.min(1,maxWidth/bitmap.width),width=Math.round(bitmap.width*scale),height=Math.round(bitmap.height*scale);
+ const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+ canvas.getContext('2d').drawImage(bitmap,0,0,width,height);
+ return {canvas,width,height};
+}
 $('scan').onclick=()=>$('cam').click();
 let scanBusy=false;
 $('cam').onchange=async e=>{
@@ -350,111 +356,56 @@ $('cam').onchange=async e=>{
  try{
   if(!window.Tesseract)await timed(loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'),15000,'OCR load');
   bitmap=await createImageBitmap(f);
-  const maxW=1600,scale=Math.min(1,maxW/bitmap.width);
-  const w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
+  const {canvas:scanSurface,width:w,height:h}=createScanSurface(bitmap);
   const pendingWorker=window.Tesseract.createWorker('eng');
   try{worker=await timed(pendingWorker,25000,'OCR startup')}
   catch(err){pendingWorker.then(w=>w.terminate()).catch(()=>{});throw err}
-  await timed(worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-',preserve_interword_spaces:'1',tessedit_pageseg_mode:'11'}),10000,'OCR setup');
-  const crops=[
-   [Math.floor(w*.10),Math.floor(h*.755),Math.floor(w*.43),Math.floor(h*.045),'Reading card number…','7'],
-   [Math.floor(w*.04),Math.floor(h*.73),Math.floor(w*.62),Math.floor(h*.08),'Reading card code…','11'],
-   [Math.floor(w*.04),Math.floor(h*.82),Math.floor(w*.62),Math.floor(h*.08),'Checking lower card code…','11'],
-   [Math.floor(w*.04),Math.floor(h*.90),Math.floor(w*.62),Math.floor(h*.08),'Checking card bottom…','11'],
-   [Math.floor(w*.02),Math.floor(h*.925),Math.floor(w*.58),Math.floor(h*.055),'Reading the card-code strip…','7'],
-   [Math.floor(w*.02),Math.floor(h*.62),Math.floor(w*.96),Math.floor(h*.34),'Reading lower card text…','11']
-  ];
-  let combined='',result=[],stripText='';
-  banner('Searching for the card-code strip…',false);
-  const stripWidth=Math.floor(w*.68),stripHeight=Math.max(1,Math.floor(h*.045)),stripX=Math.floor(w*.01);
-  const stripScale=Math.min(5,1600/stripWidth);
-  const lineHeight=Math.ceil(stripHeight*stripScale),lineGap=Math.max(12,Math.ceil(lineHeight*.18));
-  const stripStarts=[];
-  for(let y=.52;y<=.955;y+=.035)stripStarts.push(Math.floor(h*y));
-  const stripCanvas=document.createElement('canvas');
-  stripCanvas.width=Math.ceil(stripWidth*stripScale);
-  stripCanvas.height=stripStarts.length*(lineHeight+lineGap);
-  const stripContext=stripCanvas.getContext('2d',{willReadFrequently:true});
-  stripContext.fillStyle='#fff';stripContext.fillRect(0,0,stripCanvas.width,stripCanvas.height);
-  stripContext.filter='grayscale(1) contrast(1.8)';
-  stripStarts.forEach((y,index)=>stripContext.drawImage(bitmap,stripX,y,stripWidth,stripHeight,0,index*(lineHeight+lineGap),stripCanvas.width,lineHeight));
-  const stripBlob=await new Promise(resolve=>stripCanvas.toBlob(resolve,'image/jpeg',0.95));
-  await timed(worker.setParameters({tessedit_pageseg_mode:'11'}),10000,'OCR setup');
-  let stripRecognition=await timed(worker.recognize(stripBlob||stripCanvas),12000,'card-code recognition');
-  const stripLines=(stripRecognition.data&&stripRecognition.data.lines||[]).slice().sort((a,b)=>(b.confidence||0)-(a.confidence||0)).map(line=>String(line.text||'').trim()).filter(Boolean);
-  stripText=[...stripLines,String(stripRecognition.data&&stripRecognition.data.text||'').trim()].filter(Boolean).join(' ');
-  combined+=' '+stripText;
-  const codeCandidates=texts=>[...new Set(texts)].filter(text=>{
-   const key=text.toUpperCase().replace(/[^A-Z0-9]/g,'');
-   return /[\/\\|]/.test(text)||(key.length>=7&&key.length<=18&&/[A-Z]/.test(key)&&/\d/.test(key));
-  }).slice(0,10);
-  for(const text of codeCandidates([...stripLines,String(stripRecognition.data&&stripRecognition.data.text||'')].filter(Boolean))){
-   if(!text.trim())continue;
-   result=await timed(matchScannedCode(text),10000,'card matching');
+  await timed(worker.setParameters({
+   tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/-',
+   preserve_interword_spaces:'1',
+   tessedit_pageseg_mode:'7'
+  }),10000,'OCR setup');
+  let combined='',result=[];
+  const codeWidth=Math.floor(w*.48),codeHeight=Math.max(1,Math.floor(h*.028)),codeScale=Math.min(8,1800/codeWidth);
+  const scanYs=[];
+  for(let y=.56;y<=.985;y+=.014)scanYs.push(Math.min(h-codeHeight,Math.floor(h*y)));
+  banner('Scanning the card-code strip…',false);
+  for(let index=scanYs.length-1;index>=0;index--){
+   const y=scanYs[index],canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(codeWidth*codeScale));canvas.height=Math.max(1,Math.round(codeHeight*codeScale));
+   const context=canvas.getContext('2d',{willReadFrequently:true});
+   context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+   context.filter='grayscale(1) contrast(2)';
+   context.drawImage(scanSurface,0,y,codeWidth,codeHeight,0,0,canvas.width,canvas.height);
+   const image=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+   const recognized=await timed(worker.recognize(image||canvas),8000,'card-code recognition');
+   const lines=(recognized.data&&recognized.data.lines||[]).slice().sort((a,b)=>(b.confidence||0)-(a.confidence||0)).map(line=>String(line.text||'').trim()).filter(Boolean);
+   const text=String(recognized.data&&recognized.data.text||'').trim();
+   combined+=' '+[...lines,text].join(' ');
+   for(const candidate of [...new Set([...lines,text])]){
+    const key=candidate.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(!(/[\/\\|]/.test(candidate)||(key.length>=7&&key.length<=18&&/[A-Z]/.test(key)&&/\d/.test(key))))continue;
+    result=await timed(matchScannedCode(candidate),10000,'card matching');
+    if(result.length)break;
+   }
    if(result.length)break;
+   if(index%5===0)banner(`Scanning card code… ${scanYs.length-index}/${scanYs.length}`,false);
   }
   if(!result.length){
-   const stripPixels=stripContext.getImageData(0,0,stripCanvas.width,stripCanvas.height);
-   for(let i=0;i<stripPixels.data.length;i+=4){
-    const luminance=.299*stripPixels.data[i]+.587*stripPixels.data[i+1]+.114*stripPixels.data[i+2],value=luminance>150?255:0;
-    stripPixels.data[i]=stripPixels.data[i+1]=stripPixels.data[i+2]=value;
-   }
-   stripContext.putImageData(stripPixels,0,0);
-   const binaryStrip=await new Promise(resolve=>stripCanvas.toBlob(resolve,'image/png'));
-   await timed(worker.setParameters({tessedit_pageseg_mode:'11'}),10000,'OCR setup');
-   stripRecognition=await timed(worker.recognize(binaryStrip||stripCanvas),12000,'card-code recognition');
-   const binaryLines=(stripRecognition.data&&stripRecognition.data.lines||[]).slice().sort((a,b)=>(b.confidence||0)-(a.confidence||0)).map(line=>String(line.text||'').trim()).filter(Boolean);
-   stripText+=' '+[...binaryLines,String(stripRecognition.data&&stripRecognition.data.text||'').trim()].filter(Boolean).join(' ');
-   combined+=' '+stripText;
-   for(const text of codeCandidates([...binaryLines,String(stripRecognition.data&&stripRecognition.data.text||'')].filter(Boolean))){
-    if(!text.trim())continue;
-    result=await timed(matchScannedCode(text),10000,'card matching');
-    if(result.length)break;
-   }
-  }
-  for(let ci=0;ci<crops.length;ci++){
-   if(result.length)break;
-   banner(crops[ci][4],false);
-   const [x,y,cw,ch]=crops[ci],upscale=Math.min(ci===0||ci===4?7:ci<4?4:2,1800/Math.max(cw,ch));
-   const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(cw*upscale));cv.height=Math.max(1,Math.round(ch*upscale));
-   const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.filter=ci===4?'contrast(2) grayscale(1)':'contrast(1.5) grayscale(1)';ctx.drawImage(bitmap,x,y,cw,ch,0,0,cv.width,cv.height);
-   const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',0.9));
-   await timed(worker.setParameters({tessedit_pageseg_mode:crops[ci][5]}),10000,'OCR setup');
-   const recognized=await timed(worker.recognize(blob||cv),10000,'OCR recognition');
-   let cropText=String(recognized.data&&recognized.data.text||'');
-   combined+=' '+cropText;
-   banner('Matching card code…',false);
-   result=await timed(matchScannedCode(cropText),10000,'card matching');
-   const retryModes=ci===0?['11','6']:ci<=3?['6']:[];
-   for(const mode of retryModes){
-    if(result.length)break;
-    await timed(worker.setParameters({tessedit_pageseg_mode:mode}),10000,'OCR setup');
-    const alternate=await timed(worker.recognize(blob||cv),10000,'OCR recognition');
-    cropText=String(alternate.data&&alternate.data.text||'');
-    combined+=' '+cropText;
-    result=await timed(matchScannedCode(cropText),10000,'card matching');
-   }
-   if(!result.length&&ci===4){
-    const threshold=cv.getContext('2d',{willReadFrequently:true}),pixels=threshold.getImageData(0,0,cv.width,cv.height);
-    for(let i=0;i<pixels.data.length;i+=4){
-     const luminance=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2],value=luminance>145?255:0;
-     pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=value;
-    }
-    threshold.putImageData(pixels,0,0);
-    const binary=await new Promise(resolve=>cv.toBlob(resolve,'image/png'));
-    await timed(worker.setParameters({tessedit_pageseg_mode:'7'}),10000,'OCR setup');
-    const recognizedBinary=await timed(worker.recognize(binary||cv),10000,'OCR recognition');
-    cropText=String(recognizedBinary.data&&recognizedBinary.data.text||'');
-    combined+=' '+cropText;
-    banner('Matching card code…',false);
-    result=await timed(matchScannedCode(cropText),10000,'card matching');
-   }
-   if(result.length)break;
+   const fullCanvas=document.createElement('canvas'),limit=1200,fullScale=Math.min(1,limit/Math.max(w,h));
+   fullCanvas.width=Math.max(1,Math.round(w*fullScale));fullCanvas.height=Math.max(1,Math.round(h*fullScale));
+   const fullContext=fullCanvas.getContext('2d');fullContext.filter='grayscale(1) contrast(1.5)';fullContext.drawImage(scanSurface,0,0,fullCanvas.width,fullCanvas.height);
+   await timed(worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/-',tessedit_pageseg_mode:'11'}),10000,'OCR setup');
+   const fullImage=await new Promise(resolve=>fullCanvas.toBlob(resolve,'image/jpeg',0.92));
+   const recognized=await timed(worker.recognize(fullImage||fullCanvas),12000,'full-card recognition');
+   const text=String(recognized.data&&recognized.data.text||'');
+   combined+=' '+text;
+   result=await timed(matchScannedCode(text),10000,'card matching');
   }
   if(result.length){
    scanSet=new Set(result);$('q').value='';banner('Scan result: '+result.length+' likely match'+(result.length>1?'es':''),true);render();
   }else{
-   const text=(stripText||combined).toUpperCase();
+   const text=combined.toUpperCase();
    const sample=text.replace(/\s+/g,' ').trim().slice(0,60);
    banner('No match found. Keep the card upright, fill the frame, and make sure its bottom-left code is sharp and free of glare.'+(sample?' OCR read: '+esc(sample):' The card code was not readable.'),true);
   }

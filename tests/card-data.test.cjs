@@ -14,6 +14,12 @@ const formatEff=new Function(html.slice(formatterStart,formatterEnd)+';return fo
 const imageStart=html.indexOf('const cardImageURL=c=>{');
 const imageEnd=html.indexOf('\n};',imageStart)+3;
 const cardImageURL=new Function(html.slice(imageStart,imageEnd)+';return cardImageURL;')();
+const scanSurfaceStart=html.indexOf('function createScanSurface(');
+const scanSurfaceEnd=html.indexOf('\n}',scanSurfaceStart)+2;
+const scanSurfaceDrawCalls=[];
+const createScanSurface=new Function('document',html.slice(scanSurfaceStart,scanSurfaceEnd)+';return createScanSurface;')({
+ createElement:()=>({getContext:()=>({drawImage:(...args)=>scanSurfaceDrawCalls.push(args)})})
+});
 
 test('imports Charlotte W40 effects with readable tags and separate abilities',()=>{
  assert.match(byCode.get('CHA/W40-003').eff,/^\[AUTO\] /);
@@ -58,4 +64,12 @@ test('includes A Certain Guy\'s Talk with its corrected card code',()=>{
  assert.match(card?.eff||'',/choose up to 2 level 0 or lower characters/i);
  assert.match(card?.laImg||'',/^https:\/\/images\.littleakiba\.com\/tcg\/card\d+-large\.jpg$/);
  assert.equal(cards.some(item=>item.code===':'),false);
+});
+
+test('scales high-resolution scan images before cropping',()=>{
+ const bitmap={width:4000,height:6000};
+ const surface=createScanSurface(bitmap,1600);
+ assert.equal(surface.width,1600);
+ assert.equal(surface.height,2400);
+ assert.deepEqual(scanSurfaceDrawCalls.pop(),[bitmap,0,0,1600,2400]);
 });
