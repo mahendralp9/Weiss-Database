@@ -8,7 +8,7 @@ A fast, phone-friendly database of **40,000+ Weiss Schwarz cards**. Search any c
 
 ## What you can do
 
-**Find cards fast.** Search by name, card code, trait or effect text. Narrow results with colour, level, climax, favorite and stock filters, and pick a series and set. Switch between a large image grid and a text-friendly list.
+**Find cards fast.** Search by name, card code, trait or effect text. Narrow results with colour, level, climax, favorite and collection filters, and pick a series and set. Switch between a large image grid and a text-friendly list.
 
 **Read every card.** Open a card to see a big preview next to its full effect text, so you can read the card without squinting at the image.
 

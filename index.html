@@ -54,7 +54,7 @@ body.dv .cv,body.dv #list,body.dv #sent{display:none}
 #deckview h3{margin:14px 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.5px}
 .drow{margin-bottom:6px;align-items:center}.drow .info{cursor:pointer}.stp{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none}.stp button{width:36px;height:30px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-size:17px}.stp span{font-weight:800}
 .dk{margin-left:6px;background:var(--ink);color:var(--bg);border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;white-space:nowrap}.tile .dk{position:absolute;left:3px;top:3px;margin:0;font-size:10px;padding:1px 4px}
-#dbar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--ink);color:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));font-weight:700;font-size:14px}#dbar[hidden]{display:none}#dbar button{border:0;background:var(--pink);color:#fff;border-radius:8px;padding:6px 14px;font-weight:800}
+#dbar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--ink);color:var(--bg);display:block;padding:0 0 calc(4px + env(safe-area-inset-bottom,0px));font-weight:700;font-size:14px;border-radius:14px 14px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.22)}#dbar .bar-handle{display:block;width:100%;height:22px;padding:0;border:0;border-radius:14px 14px 0 0;background:none;color:inherit;cursor:pointer}#dbar .bar-handle span{display:block;width:44px;height:5px;margin:9px auto 0;border-radius:3px;background:currentColor;opacity:.45}.bar-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:2px 14px 8px;max-height:64px;overflow:hidden;transition:max-height .2s ease,padding .2s ease}#dbar.collapsed .bar-row{max-height:0;padding-top:0;padding-bottom:0}#dbar[hidden]{display:none}#dbar button{border:0;background:var(--pink);color:#fff;border-radius:8px;padding:6px 14px;font-weight:800}
 body.hasbar main{padding-bottom:90px}textarea.sb{font-size:14px}
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}.sheet[hidden]{display:none}
 .panel{background:var(--surf);width:100%;max-width:620px;max-height:90%;overflow:auto;border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px))}
@@ -118,7 +118,7 @@ body.home-mode .bottom-nav button{color:#aaa9b4}
 body.home-mode .bottom-nav button[aria-current="page"]{color:#a8c3ff}
 body:not(.dv) #list,body:not(.dv) #deckview{padding-bottom:100px}
 body.hasbar #dbar{bottom:calc(62px + env(safe-area-inset-bottom,0px))}
-body.hasbar main{padding-bottom:150px}
+body.hasbar main{padding-bottom:150px}body.hasbar.bar-min main{padding-bottom:100px}
 @media(min-width:700px){.home-hero{padding-left:max(24px,calc((100vw - 760px)/2));padding-right:max(24px,calc((100vw - 760px)/2))}.home-hero h2{margin-top:34px}.home-action{min-height:154px}.bottom-nav{left:50%;right:auto;width:min(100%,760px);transform:translateX(-50%);border-radius:16px 16px 0 0}}
 </style><link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -144,7 +144,7 @@ let CARDS;try{CARDS=JSON.parse(await inflate(document.getElementById('data').tex
 const CC={Blue:'var(--blue)',Green:'var(--green)',Red:'var(--red)',Yellow:'var(--yellow)'};
 const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,'');
 const $=id=>document.getElementById(id);
-let fav={},stock={},view='grid',recentCodes=[];
+let fav={},stock={},view='grid',recentCodes=[];let deckAdding=false,barCollapsed=false;try{barCollapsed=localStorage.getItem('ws_bar_collapsed')==='1'}catch(e){}
 try{
  fav=JSON.parse(localStorage.getItem('ws_favorites')||'{}');
  if(!Object.keys(fav).length){
@@ -173,7 +173,7 @@ const formatEff=s=>{
 };
 const F={fav:false,stock:false,cols:new Set(),lvs:new Set(),cx:false};let scanSet=null;
 const tog=(s,v)=>s.has(v)?s.delete(v):s.add(v);
-const defs=[['Favorite',()=>F.fav=!F.fav,()=>F.fav],['Stock',()=>F.stock=!F.stock,()=>F.stock],...['Blue','Green','Red'].map(x=>[x,()=>tog(F.cols,x),()=>F.cols.has(x)]),...[0,1,2,3].map(x=>['Lv '+x,()=>tog(F.lvs,x),()=>F.lvs.has(x)]),['Climax',()=>F.cx=!F.cx,()=>F.cx],['Reset',()=>{F.fav=F.stock=F.cx=false;F.cols.clear();F.lvs.clear();$('ser').value='';$('set').value='';updSets();$('q').value='';scanSet=null},()=>false]];
+const defs=[['Favorite',()=>F.fav=!F.fav,()=>F.fav],['Collection',()=>F.stock=!F.stock,()=>F.stock],...['Blue','Green','Red'].map(x=>[x,()=>tog(F.cols,x),()=>F.cols.has(x)]),...[0,1,2,3].map(x=>['Lv '+x,()=>tog(F.lvs,x),()=>F.lvs.has(x)]),['Climax',()=>F.cx=!F.cx,()=>F.cx],['Reset',()=>{F.fav=F.stock=F.cx=false;F.cols.clear();F.lvs.clear();$('ser').value='';$('set').value='';updSets();$('q').value='';scanSet=null},()=>false]];
 function chips(){const cb=$('chips');cb.innerHTML='';defs.forEach(([t,f,on])=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.setAttribute('aria-pressed',on());b.onclick=()=>{f();chips();render()};cb.appendChild(b)})}
 function updSets(){}
 function combo(id,opts,after){const inp=$(id),dd=document.createElement('div');dd.className='dd';dd.hidden=true;inp.parentNode.appendChild(dd);
@@ -207,7 +207,7 @@ function render(){
  const m=$('list');m.className=view==='grid'?'grid':'';$('vg').setAttribute('aria-pressed',view==='grid');$('vt').setAttribute('aria-pressed',view!=='grid');
  m.innerHTML=rows.length?'':'<div class="empty">No cards match. Try another keyword or press Reset.</div>';
  shown=0; make=c=>{const b=document.createElement('button');const im=pic(c);const q=own(c)?'<div class="qty fav" aria-label="Favorite">★</div>':'';
-  if(view==='grid'){const sb=stockOf(c)?'<div class="stock-badge" aria-label="Stock">×'+stockOf(c)+'</div>':'';b.className='tile';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.innerHTML=im+q+sb+'<div class="cap">'+esc(c.code)+'</div>'}
+  if(view==='grid'){const sb=stockOf(c)?'<div class="stock-badge" aria-label="Collection">×'+stockOf(c)+'</div>':'';b.className='tile';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.innerHTML=im+q+sb+'<div class="cap">'+esc(c.code)+'</div>'}
   else{b.className='card row';b.style.setProperty('--c',CC[c.col]||'var(--line)');b.style.borderLeft='7px solid var(--c)';b.innerHTML=im+'<div class="info"><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div>'+(c.eff?'<div class="teff">'+esc(formatEff(c.eff))+'</div>':'')+'</div>'+q}
   b._c=c;b.onclick=()=>open_(c);m.appendChild(b);dkb(b,c)};more()}
 
@@ -252,7 +252,7 @@ async function openFullCard(c,allowRemote=true){
 function open_(c){
  recentCodes=[c.code,...recentCodes.filter(code=>code!==c.code)].slice(0,12);
  try{localStorage.setItem('ws_recent',JSON.stringify(recentCodes))}catch(e){}
- $('panel').innerHTML='<button class="x" aria-label="Close">×</button><div class="top">'+pic(c,true)+'<div><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div><div class="tags" style="margin-top:6px">'+esc(c.series+' · '+c.set+(c.traits.length?' · '+c.traits.join(' / '):'')+(c.trig.length?' · Trigger: '+c.trig.join(', '):''))+'</div></div></div><div class="det eff" style="border:0;padding:12px 0 0">'+esc(formatEff(c.eff)||'(No English effect text available)')+'</div><div class="control-grid"><div class="step">Favorite: <button class="favstar" aria-label="Toggle favorite">'+(own(c)?'★':'☆')+'</button></div><div class="step" id="stock-control">Stock: <button aria-label="Decrease stock">−</button><span>'+stockOf(c)+'</span><button aria-label="Increase stock">+</button></div></div>';
+ $('panel').innerHTML='<button class="x" aria-label="Close">×</button><div class="top">'+pic(c,true)+'<div><div class="code">'+esc(c.code)+'</div><div class="nm">'+esc(c.name)+'</div><div class="meta">'+esc(meta(c))+'</div><div class="tags" style="margin-top:6px">'+esc(c.series+' · '+c.set+(c.traits.length?' · '+c.traits.join(' / '):'')+(c.trig.length?' · Trigger: '+c.trig.join(', '):''))+'</div></div></div><div class="det eff" style="border:0;padding:12px 0 0">'+esc(formatEff(c.eff)||'(No English effect text available)')+'</div><div class="control-grid"><div class="step">Favorite: <button class="favstar" aria-label="Toggle favorite">'+(own(c)?'★':'☆')+'</button></div><div class="step" id="stock-control">Collection: <button aria-label="Decrease collection">−</button><span>'+stockOf(c)+'</span><button aria-label="Increase collection">+</button></div></div>';
  const fav=$('panel').querySelector('.favstar');
  const upd=()=>{fav[c.code]=own(c)?undefined:true;if(!fav[c.code])delete fav[c.code];save();fav.textContent=own(c)?'★':'☆';fav.setAttribute('aria-pressed',own(c)?'true':'false');render()};
  fav.setAttribute('aria-pressed',own(c)?'true':'false');fav.onclick=upd;$('panel').querySelector('.x').onclick=close_;
@@ -268,6 +268,7 @@ function open_(c){
   };
   previewTop.style.cursor='zoom-in';
  }
+ if(deckAdding||mode==='deck'){
  const dkp=document.createElement('div');dkp.className='step';const dd0=curDeck();
  dkp.innerHTML='Deck'+(dd0?' ('+esc(dd0.name)+')':'')+': <button aria-label="Remove from deck">−</button><span>'+inDeck(c)+'</span><button aria-label="Add to deck">+</button>';
  $('panel').appendChild(dkp);
@@ -276,6 +277,7 @@ function open_(c){
  cb2.onclick=()=>{const d=curDeck();if(!d)return;d.cover=c.code;saveD();cbs();if(mode==='deck'){const y=scrollY;renderDeck();scrollTo(0,y)}};$('panel').appendChild(cb2);const db=dkp.querySelectorAll('button'),ds=dkp.querySelector('span');
  const dupd=n=>{setIn(c,n);ds.textContent=inDeck(c);dkp.firstChild.textContent='Deck ('+curDeck().name+'): ';refreshBadges();updBar();cbs();if(mode==='deck'){const y=scrollY;renderDeck();scrollTo(0,y)}};
  db[0].onclick=()=>dupd(inDeck(c)-1);db[1].onclick=()=>dupd(inDeck(c)+1);
+ }
  $('sheet').hidden=false}
 const close_=()=>{$('sheet').hidden=true};
 $('sheet').onclick=e=>{if(e.target.id==='sheet')close_()};document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('lightbox').hidden)closeLightbox();else close_()}});
@@ -448,7 +450,7 @@ const coverCard=d=>{const c=d.cover&&byCode.get(d.cover);if(c&&d.cards[c.code])r
 const attr=s=>esc(s).replace(/"/g,'&quot;');
 function newDeck(name){const d={id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name||'New deck',cards:{}};decks.push(d);act=d.id;saveD();return d}
 function setIn(c,n){const d=curDeck()||newDeck('My deck');n=Math.max(0,Math.min(50,n));if(n)d.cards[c.code]=n;else delete d.cards[c.code];saveD()}
-function dkb(b,c){const o=b.querySelector('.dk');if(o)o.remove();const n=inDeck(c);if(!n)return;const s=document.createElement('span');s.className='dk';s.textContent='Deck ×'+n;(b.classList.contains('tile')?b:b.querySelector('.code')).appendChild(s)}
+function dkb(b,c){const o=b.querySelector('.dk');if(o)o.remove();const n=deckAdding?inDeck(c):0;if(!n)return;const s=document.createElement('span');s.className='dk';s.textContent='Deck ×'+n;(b.classList.contains('tile')?b:b.querySelector('.code')).appendChild(s)}
 function refreshBadges(){document.querySelectorAll('#list > *').forEach(b=>{if(b._c)dkb(b,b._c)})}
 function stats(d){const s={n:0,cx:0,ev:0,lv:[0,0,0,0],soul:0,over:[]};for(const [code,k] of Object.entries(d.cards)){const c=byCode.get(code);if(!c)continue;s.n+=k;if(k>4)s.over.push(c.name);if(c.type==='Climax')s.cx+=k;else if(c.type==='Event')s.ev+=k;else s.lv[Math.min(3,c.lv)]+=k;if(c.trig.some(t=>/soul/i.test(t)))s.soul+=k}return s}
 const valid=s=>s.n===50&&s.cx<=8&&!s.over.length;
@@ -457,9 +459,13 @@ const GORD=['Level 3','Level 2','Level 1','Level 0','Events','Climax'];
 function groups(d){const g={};Object.entries(d.cards).forEach(([code,k])=>{const c=byCode.get(code);if(c)(g[grp(c)]=g[grp(c)]||[]).push([c,k])});GORD.forEach(x=>g[x]&&g[x].sort((a,b)=>a[0].name.localeCompare(b[0].name)));return GORD.filter(x=>g[x]).map(x=>[x,g[x]])}
 function deckText(d){const L=[d.name+' ('+dsum(d)+' cards)'];groups(d).forEach(([l,it])=>{L.push('','// '+l+' ('+it.reduce((a,x)=>a+x[1],0)+')');it.forEach(([c,k])=>L.push(k+' '+c.code+' '+c.name))});return L.join('\n')}
 async function copyText(t,btn){let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{ok=document.execCommand('copy')}catch(e2){}ta.remove()}const o=btn.textContent;btn.textContent=ok?'Copied!':'Copy failed';setTimeout(()=>btn.textContent=o,1500)}
-function updBar(){const d=curDeck(),bar=$('dbar'),show=mode==='cards'&&!!d;bar.hidden=!show;document.body.classList.toggle('hasbar',show);if(show){const stockTotal=Object.values(stock).reduce((a,b)=>a+(+b||0),0);bar.innerHTML='<span>Stock: '+stockTotal+' · Deck: '+esc(d.name)+' · '+dsum(d)+'/50</span><button>Open</button>';bar.querySelector('button').onclick=()=>setMode('deck')}}
+function updBar(){const d=curDeck(),bar=$('dbar'),show=mode==='cards'&&deckAdding&&!!d;bar.hidden=!show;document.body.classList.toggle('hasbar',show);document.body.classList.toggle('bar-min',show&&barCollapsed);bar.classList.toggle('collapsed',barCollapsed);
+ if(show){const total=Object.values(stock).reduce((a,b)=>a+(+b||0),0);
+  bar.innerHTML='<button class="bar-handle" aria-label="'+(barCollapsed?'Show deck bar':'Hide deck bar')+'" aria-expanded="'+(!barCollapsed)+'"><span></span></button><div class="bar-row"><span>Collection: '+total+' · Deck: '+esc(d.name)+' · '+dsum(d)+'/50</span><button class="bar-open">Open</button></div>';
+  bar.querySelector('.bar-handle').onclick=()=>{barCollapsed=!barCollapsed;try{localStorage.setItem('ws_bar_collapsed',barCollapsed?'1':'')}catch(e){}updBar()};
+  bar.querySelector('.bar-open').onclick=()=>setMode('deck')}}
 function updateNav(){const active=mode==='home'?'home':mode==='cards'?'cards':mode==='deck'||mode==='decks'?'decks':'';[['nav-home','home'],['nav-cards','cards'],['nav-decks','decks']].forEach(([id,key])=>{if(active===key)$(id).setAttribute('aria-current','page');else $(id).removeAttribute('aria-current')})}
-function setMode(m){mode=m;document.body.classList.toggle('dv',m!=='cards');document.body.classList.toggle('home-mode',m==='home');$('home').hidden=m!=='home';$('tc').setAttribute('aria-pressed',m==='cards');$('td').setAttribute('aria-pressed',m==='decks'||m==='deck');$('deckview').hidden=m==='cards'||m==='home';if(m==='home')renderHome();if(m==='decks')renderDecks();if(m==='deck')renderDeck();updBar();updateNav();scrollTo(0,0);if(m==='cards')refreshBadges()}
+function setMode(m){mode=m;if(m!=='cards')deckAdding=false;document.body.classList.toggle('dv',m!=='cards');document.body.classList.toggle('home-mode',m==='home');$('home').hidden=m!=='home';$('tc').setAttribute('aria-pressed',m==='cards');$('td').setAttribute('aria-pressed',m==='decks'||m==='deck');$('deckview').hidden=m==='cards'||m==='home';if(m==='home')renderHome();if(m==='decks')renderDecks();if(m==='deck')renderDeck();updBar();updateNav();scrollTo(0,0);if(m==='cards')refreshBadges()}
 function homeCard(c){const b=document.createElement('button');b.className='home-card';b.innerHTML=pic(c,true)+'<span class="home-card-code">'+esc(c.code)+'</span><span class="home-card-name">'+esc(c.name)+'</span>';b.onclick=()=>open_(c);return b}
 function homeFilter(kind){F.fav=kind==='fav';F.stock=kind==='stock';F.cols.clear();F.lvs.clear();F.cx=false;scanSet=null;$('q').value='';$('ser').value='';$('set').value='';chips();setMode('cards');render()}
 function homeBrowse(){F.fav=F.stock=F.cx=false;F.cols.clear();F.lvs.clear();scanSet=null;$('q').value='';$('ser').value='';$('set').value='';chips();setMode('cards');render()}
@@ -489,7 +495,7 @@ function renderDeck(){const d=curDeck();if(!d){setMode('decks');return}const v=$
  if(s.n!==50)is.push(s.n+' of 50 cards');if(s.cx>8)is.push('Climax '+s.cx+' (max 8)');if(s.over.length)is.push('Over 4 copies: '+s.over.join(', '));
  v.innerHTML='<button class="chip" id="bk">‹ All decks</button><div class="dhead"><div class="dkc">'+(cov?pic(cov):'')+'</div><input class="sb dn" id="dn" value="'+attr(d.name)+'" aria-label="Deck name"></div><div class="stats"><b class="'+(s.n===50?'okc':'badc')+'">'+s.n+'/50</b><span>Climax '+s.cx+'/8</span><span>Events '+s.ev+'</span><span>Lv0 '+s.lv[0]+'</span><span>Lv1 '+s.lv[1]+'</span><span>Lv2 '+s.lv[2]+'</span><span>Lv3 '+s.lv[3]+'</span><span>Soul triggers '+s.soul+'</span></div>'+(is.length?'<div class="issues">'+esc(is.join(' · '))+'</div>':'<div class="issues okm">Valid: 50 cards, max 8 climax, max 4 copies.</div>')+'<div class="dacts"><button class="chip" id="ac">Add cards</button><button class="chip" id="cp">Copy list</button><button class="chip" id="ex">Export image</button><button class="chip" id="du">Duplicate</button><button class="chip" id="de">Delete</button></div><div id="dl"></div>';
  $('bk').onclick=()=>setMode('decks');$('dn').oninput=e=>{d.name=e.target.value||'Untitled';saveD()};
- $('ac').onclick=()=>setMode('cards');$('cp').onclick=e=>copyText(deckText(d),e.currentTarget);$('ex').onclick=e=>exportImage(d,e.currentTarget);
+ $('ac').onclick=()=>{setMode('cards');deckAdding=true;updBar();refreshBadges()};$('cp').onclick=e=>copyText(deckText(d),e.currentTarget);$('ex').onclick=e=>exportImage(d,e.currentTarget);
  $('du').onclick=()=>{const n=newDeck(d.name+' copy');n.cards={...d.cards};saveD();renderDeck();scrollTo(0,0)};
  let armed=false;$('de').onclick=e=>{if(!armed){armed=true;e.currentTarget.textContent='Tap again to delete';return}decks=decks.filter(x=>x.id!==d.id);act=decks.length?decks[0].id:null;saveD();setMode('decks')};
  const L=$('dl');if(!groups(d).length)L.innerHTML='<div class="empty">Empty deck. Tap Add cards, open a card and use the Deck + button.</div>';
