@@ -1,4 +1,4 @@
-const CACHE='ws-database-v6';
+const CACHE='ws-database-v7';
 const CORE=[
  './',
  './index.html',
